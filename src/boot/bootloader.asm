@@ -20,6 +20,8 @@
 
 ; BOOTLOADER - 512 bytes - sector 1
 start:
+    ; don't modify stack pointer and base pointer, on boot, bp = 0, and sp = to some value in between 0x7c00 (under bootloader) and 0x500 (above bios data)
+
     ; set es segment to 0x7000
     mov ax, 0x700 ; will be shifted over by 4
     mov es, ax
@@ -36,6 +38,14 @@ start:
     int DISK ; call bios to handle disk operation
     jc disk_fail ; if the carry flag is set (something went wrong) hang
 
+    ; read kernel from disk into memory above strings/data
+    mov bx, 0xf00 ; data/strings location
+    mov ah, 0x2 ; (bios) read a sector mode
+    mov al, 0xa ; read 10 sectors
+    mov cx, 0x3 ; ch = cylinder 0, cl = sector 3
+    mov dh, 0x0 ; head 0
+    int DISK ; call bios to handle disk operation
+    jc disk_fail ; if the carry flag is set (something went wrong) hang
     ; print messages
     print load ; just a helpful message
     print disk_okay ; since we could load the strings, we know disk is fine
@@ -44,10 +54,14 @@ start:
     ; first setup the global descriptor table which is defined in the sector we just loaded
     cli ; disable interrupts because when we switch we do not want the BIOS handling our interrupts
     lgdt [gdt_descriptor] ; set addr of gdt descriptor so the cpu knows where our GDT is at
+    print gdt_okay
+
+    ; set 32 bit mode in control register
     mov esi, cr0 ; get contents of the control register so we can modify them
     or esi, 0x1 ; set esi's first bit (16 bit or 32 bit mode flag) to 1
     mov cr0, esi ; flag is now set, we go from 16 bit real mode to 32 bit protected mode
     jmp CODE_SEGMENT:start_protected ; make a far jump to flush the CPU pipeline so we don't keep executing 16 bit code
+    print 
 
     ; print finish boot message
     print finish
@@ -63,6 +77,10 @@ print_si:
     int DISPLAY ; if not print
     jmp .loop ; then go back to loading another byte
     .ret:
+    mov al, 0xa ; newline
+    int DISPLAY
+    mov al, 0xd ; carriage return
+    int DISPLAY
     ret
 
 hang:
@@ -77,16 +95,33 @@ disk_fail:
 [bits 32]
 start_protected:
 
+    ; setup stack
+    mov esp, 0x9fc00 ; stack grows down, giving ~600kb of stack space
+    mov ebp, esp ; set stack base at it's start
 
-ok db "shrine_ok", 0xa, 0xd, 0 ; small confirmation message so we know the bootloader worked
-bad_disk db "disk_bad", 0xa, 0xd, 0 ; small message to display in the case that we could not load data from the disk
+    ; every other segment register besides the cs register will use the data segment we defined in the GDT
+    mov ax, DATA_SEGMENT
+    mov ds, ax
+    mov es, ax
+    mov gs, ax
+    mov fs, ax
+    mov ss, ax
+
+    call 0x7f00 ; call the location the kernel was loaded to
+
+    jmp $
+
+ok db "shrine_ok", 0 ; small confirmation message so we know the bootloader worked
+bad_disk db "disk_bad", 0 ; small message to display in the case that we could not load data from the disk
 times 510-($-$$) db 0 ; pad rest of 510 bytes with 0s
 dw 0xaa55 ; bytes 511 and 512 need to be boot signature
 
 ; STRINGS/DATA FOR BOOTLOADER - 512 bytes - sector 2
-load db "Loading ShrineOS...", 0xa, 0xd, 0
-disk_okay db "Disk operations are functional.", 0xa, 0xd, 0
-finish db "ShrineOS is ready! We are going to have so much fun! :)", 0xa, 0xd, 0
+load db "Loading ShrineOS...", 0
+disk_okay db "Disk operations are functional.", 0
+gdt_okay db "Loaded the GDT.", 0
+protected_okay db "Switched from 16-bit real mode to 32-bit protected mode.", 0
+finish db "ShrineOS is ready! We are going to have so much fun! :)", 0
 
 ; 114 bytes used so far
 
