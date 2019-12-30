@@ -14,9 +14,9 @@ bootloader:
 
 kernel:
 	# compile an object file of the kernel assuming a standard library won't be available
-	gcc -ffreestanding -c src/kernel/kernel.c -o $(BUILD_DIR)/kernel/kernel.o
+	gcc -ffreestanding -c src/kernel/kernel.c -o $(BUILD_DIR)/kernel/kernel.o -m32 -fno-pic -no-pie
 	# link the kernel relative to 0x7f00 (we will load it at this address) and the format as a raw binary file
-	ld -o $(BUILD_DIR)/kernel/kernel.bin -Ttext 0x7f00 --oformat binary $(BUILD_DIR)/kernel/kernel.o
+	ld -o $(BUILD_DIR)/kernel/kernel.bin -T src/kernel/kernel.lds --oformat binary $(BUILD_DIR)/kernel/kernel.o -melf_i386
 
 image:
 	# create a blank image 256kb large
