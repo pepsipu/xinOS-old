@@ -10,7 +10,7 @@
 [org 0x7c00]
 [bits 16]
 
-%define KERNEL_SECTORS 0x5
+%define KERNEL_SECTORS 59
 
 %define DISK 0x13
 %define DISPLAY 0x10
@@ -40,10 +40,15 @@ start:
     int DISK ; call bios to handle disk operation
     jc disk_fail ; if the carry flag is set (something went wrong) hang
 
+    print ok
+
+    xor ax, ax
+    mov es, ax ; set es to 0
+
     ; read kernel from disk into memory above strings/data
-    mov bx, 0xf00 ; data/strings location
+    mov bx, 0x500 ; kernel location
     mov ah, 0x2 ; (bios) read a sector mode
-    mov al, KERNEL_SECTORS ; read 5 sectors
+    mov al, KERNEL_SECTORS ; read as many sectors as needed
     mov cx, 0x3 ; ch = cylinder 0, cl = sector 3
     mov dh, 0x0 ; head 0
     int DISK ; call bios to handle disk operation
@@ -92,6 +97,7 @@ hang:
 
 disk_fail:
     print bad_disk
+    print ok
     jmp hang
 
 [bits 32]
@@ -109,7 +115,7 @@ start_protected:
     mov fs, ax
     mov ss, ax
 
-    call 0x7f00 ; call the location the kernel was loaded to
+    call 0x500 ; call the location the kernel was loaded to
 
     jmp $
 
@@ -164,3 +170,6 @@ gdt_descriptor:
     dd gdt ; address of gdt
 CODE_SEGMENT equ gdt_code_segment - gdt ; define the code offset of gdt so we can tell the CPU which segment we refer to
 DATA_SEGMENT equ gdt_data_segment - gdt ; define the data offset of gdt so we can tell the CPU which segment we refer to
+
+; setup interrupt descriptor table
+idt:

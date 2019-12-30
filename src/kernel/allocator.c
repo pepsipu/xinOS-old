@@ -1,4 +1,10 @@
-#define HEAP_START 0x8900 // begin heap right above where kernel is loaded
+#ifndef ALLOC
+#define ALLOC
+
+#define HEAP_START 0x7f00 // begin heap right above where kernel is loaded
+
+#include <stdint.h>
+#include <glob.h>
 
 /*
  * often, you'll see me typecast pointers to char* and then offset them by something. This is done in order to avoid
@@ -8,13 +14,13 @@
 
 struct chunk {
     struct chunk *fd;
-    unsigned int size;
+    size_t size;
 };
 
-unsigned int used_space = 0;
+uint64_t used_space = 0;
 struct chunk free_bin = {.fd = 0, .size = 0};
 
-void *_find_free(unsigned int size) {
+void *_find_free(size_t size) {
     struct chunk *ptr = &free_bin;
     while (ptr->fd) { // loop while there are pointers in the free_bin list
         if (ptr->fd->size >= size) { // run code if we find a chunk bigger than what we requested
@@ -26,8 +32,8 @@ void *_find_free(unsigned int size) {
     return 0;
 }
 
-void *alloc(unsigned int usable_size) {
-    int new_size = usable_size + sizeof(struct chunk);
+void *alloc(size_t usable_size) {
+    size_t new_size = usable_size + sizeof(struct chunk);
     struct chunk *ptr = _find_free(new_size);
     if (ptr) { // if we find a chunk in the free list use it
         ptr->fd = 0;
@@ -49,3 +55,4 @@ void free(void *chunk) {
     true_chunk->fd = save;
 }
 
+#endif
