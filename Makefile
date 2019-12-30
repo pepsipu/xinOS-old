@@ -14,17 +14,19 @@ bootloader:
 
 kernel:
 	# compile an object file of the kernel assuming a standard library won't be available
-	gcc -ffreestanding -c src/kernel/kernel.c -o $(BUILD_DIR)/kernel/kernel.o -m32 -fno-pic -no-pie
-	# link the kernel relative to 0x7f00 (we will load it at this address) and the format as a raw binary file
-	ld -o $(BUILD_DIR)/kernel/kernel.bin -T src/kernel/kernel.lds --oformat binary $(BUILD_DIR)/kernel/kernel.o -melf_i386
+	gcc -ffreestanding -c src/kernel/kernel.c -o $(BUILD_DIR)/kernel/kernel.o -m32 -fno-pic -no-pie -g
+	# link the kernel relative to 0x7f00 (we will load it at this address) as an elf, for debugging
+	ld -o $(BUILD_DIR)/kernel/kernel.elf -T src/kernel/kernel.lds $(BUILD_DIR)/kernel/kernel.o -melf_i386
+	# create raw binary file of kernel
+	objcopy -O binary $(BUILD_DIR)/kernel/kernel.elf $(BUILD_DIR)/kernel/kernel.bin
 
 image:
-	# create a blank image 256kb large
+	# create a blank image 32kb large
 	dd if=/dev/zero of=$(BUILD_DIR)/shrineos.img bs=512 count=64
-	# write bootloader and it's strings/data to first 1024 bytes
+	# write bootloader and it's strings/data to first 1024 bytes (1kb)
 	dd conv=notrunc if=$(BUILD_DIR)/bootloader/bootloader.bin of=$(BUILD_DIR)/$(OS_IMG) bs=512 count=2 seek=0
-	# write kernel to the rest of image
-	dd conv=notrunc if=$(BUILD_DIR)/kernel/kernel.bin of=$(BUILD_DIR)/$(OS_IMG) bs=512 count=10 seek=2
+	# write kernel to the rest of image (2.5kb)
+	dd conv=notrunc if=$(BUILD_DIR)/kernel/kernel.bin of=$(BUILD_DIR)/$(OS_IMG) bs=512 count=5 seek=2
 
 clean:
 	rm -r build

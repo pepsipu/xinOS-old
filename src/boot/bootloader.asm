@@ -10,6 +10,8 @@
 [org 0x7c00]
 [bits 16]
 
+%define KERNEL_SECTORS 0x5
+
 %define DISK 0x13
 %define DISPLAY 0x10
 
@@ -41,7 +43,7 @@ start:
     ; read kernel from disk into memory above strings/data
     mov bx, 0xf00 ; data/strings location
     mov ah, 0x2 ; (bios) read a sector mode
-    mov al, 0xa ; read 10 sectors
+    mov al, KERNEL_SECTORS ; read 5 sectors
     mov cx, 0x3 ; ch = cylinder 0, cl = sector 3
     mov dh, 0x0 ; head 0
     int DISK ; call bios to handle disk operation
