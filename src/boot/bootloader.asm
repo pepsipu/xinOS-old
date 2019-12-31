@@ -24,6 +24,11 @@
 start:
     ; don't modify stack pointer and base pointer, on boot, bp = 0, and sp = to some value in between 0x7c00 (under bootloader) and 0x500 (above bios data)
 
+    mov ax, CODE_SEGMENT
+    mov [0x7b00], ax
+    mov ax, 0xdead
+    mov [0x7b10], ax
+
     ; set es segment to 0x7000
     mov ax, 0x700 ; will be shifted over by 4
     mov es, ax

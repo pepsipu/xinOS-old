@@ -5,6 +5,6 @@
 
 int __attribute__ ((section ("kernel_entry"))) kmain() {
     init_idt();
-    register_isr(int80, 80);
+    register_isr(int80, 0x80);
     asm("int $0x80");
 }

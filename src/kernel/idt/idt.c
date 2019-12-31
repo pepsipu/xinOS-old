@@ -5,7 +5,8 @@
 
 /*
  * This code sets up the Interrupt Descriptor table (idt). This is used for handling software and hardware interrupts.
- * More information can be found at https://wiki.osdev.org/IDT.
+ * More information can be found at https://wiki.osdev.org/IDT. In addition, all structures have the "packed" attribute
+ * in order to remove padding between the attributes of the structure.
 */
 struct idt_entry {
     uint16_t offset_1; // offset bits 0..15
@@ -13,12 +14,12 @@ struct idt_entry {
     uint8_t zero;      // unused, set to 0
     uint8_t type; // type and attributes, see below
     uint16_t offset_2; // offset bits 16..31
-};
+} __attribute__((packed));
 
 struct idt_ptr {
     uint16_t size;
     uint32_t addr;
-};
+} __attribute__((packed));
 
 struct idt_entry idt[256];
 struct idt_ptr idtp;
@@ -35,10 +36,17 @@ void register_isr(void *isr, uint8_t index) { // register a interrupt service ro
      * bytes of 0xDEADBEEF (little endianness matters), you could cast the pointer as 4 characters and get the first
      * two "characters". This would return EF and BE. ([EF BE] AD DE)
      */
-    char *isr_byte_array = isr;
-    current_entry->offset_1 = (uint16_t) *isr_byte_array; // get low bytes
-    current_entry->offset_2 = (uint16_t) *(isr_byte_array + 2); // get high bytes
+    char *isr_byte_array = (char *) &isr;
+
+    *((char *) &current_entry->offset_1) = isr_byte_array[0]; // set lowest byte to lowest part of the isr address
+    *((char *) &current_entry->offset_1 + 1) = isr_byte_array[1]; // set 2nd lowest byte to 2nd lowest byte of isr address
+
+    *((char *) &current_entry->offset_2) = isr_byte_array[2];
+    *((char *) &current_entry->offset_2 + 1) = isr_byte_array[3];
+
     current_entry->zero = 0; // must be set to 0, for whatever reason
+
+    current_entry->selector = CODE_SEGMENT;
     /*
      * Flags are a big messy to work with in a high level language. As a visual aid, follow the diagram (provided by
      * the OSDev wiki.)
@@ -63,7 +71,7 @@ void register_isr(void *isr, uint8_t index) { // register a interrupt service ro
 
 void init_idt() {
     idtp.size = (sizeof (struct idt_entry) * 256) - 1; // For whatever reason, the CPU will take in the size - 1.
-    idtp.addr = (uint32_t) &idt;
+    idtp.addr = (uint32_t) idt;
     memset(&idt, 0, 256 * sizeof(struct idt_entry)); // Zero out the memory of the IDT (just in case) to avoid old values from acting as entries
     asm("lidt %0" : : "m"(idtp)); // load the idt, equivalent to "lidt [idtp]"
 }
