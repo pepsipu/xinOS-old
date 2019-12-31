@@ -40,8 +40,6 @@ start:
     int DISK ; call bios to handle disk operation
     jc disk_fail ; if the carry flag is set (something went wrong) hang
 
-    print ok
-
     xor ax, ax
     mov es, ax ; set es to 0
 
@@ -68,12 +66,6 @@ start:
     or esi, 0x1 ; set esi's first bit (16 bit or 32 bit mode flag) to 1
     mov cr0, esi ; flag is now set, we go from 16 bit real mode to 32 bit protected mode
     jmp CODE_SEGMENT:start_protected ; make a far jump to flush the CPU pipeline so we don't keep executing 16 bit code
-    print 
-
-    ; print finish boot message
-    print finish
-
-    jmp hang
 
 print_si:
     mov ah, 0x0e ; (bios) teletype mode
@@ -104,7 +96,7 @@ disk_fail:
 start_protected:
 
     ; setup stack
-    mov esp, 0x9fc00 ; stack grows down, giving ~600kb of stack space
+    mov esp, 0x9fc00 ; stack grows down, giving ~600kb of stack space (heap grows up from 0x7f00, though collision is unlikely)
     mov ebp, esp ; set stack base at it's start
 
     ; every other segment register besides the cs register will use the data segment we defined in the GDT
@@ -128,8 +120,8 @@ dw 0xaa55 ; bytes 511 and 512 need to be boot signature
 load db "Loading ShrineOS...", 0
 disk_okay db "Disk operations are functional.", 0
 gdt_okay db "Loaded the GDT.", 0
-protected_okay db "Switched from 16-bit real mode to 32-bit protected mode.", 0
-finish db "ShrineOS is ready! We are going to have so much fun! :)", 0
+protected_okay db "Switching from 16-bit real mode to 32-bit protected mode.", 0
+
 
 ; 114 bytes used so far
 
@@ -170,6 +162,3 @@ gdt_descriptor:
     dd gdt ; address of gdt
 CODE_SEGMENT equ gdt_code_segment - gdt ; define the code offset of gdt so we can tell the CPU which segment we refer to
 DATA_SEGMENT equ gdt_data_segment - gdt ; define the data offset of gdt so we can tell the CPU which segment we refer to
-
-; setup interrupt descriptor table
-idt:
