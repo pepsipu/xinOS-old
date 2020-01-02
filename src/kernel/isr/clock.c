@@ -7,4 +7,5 @@ struct interrupt_frame;
 
 __attribute__((interrupt)) void int32(struct interrupt_frame* frame) {
     print("\nclock\n");
+    outb(0x20,0x20);
 }

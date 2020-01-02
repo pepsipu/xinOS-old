@@ -80,7 +80,8 @@ void init_idt() {
     idtp.size = (sizeof (struct idt_entry) * 256) - 1; // For whatever reason, the CPU will take in the size - 1.
     idtp.addr = (uint32_t) idt;
     memset(&idt, 0, 256 * sizeof(struct idt_entry)); // Zero out the memory of the IDT (just in case) to avoid old values from acting as entries
-    asm("lidt %0" : : "m"(idtp)); // load the idt, equivalent to "lidt [idtp]"
+    asm volatile ("lidt %0" : : "m"(idtp)); // load the idt, equivalent to "lidt [idtp]"
     register_exceptions();
-    asm("sti");
+    register_isr(int32, 32);
+    asm volatile ("sti");
 }

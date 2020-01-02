@@ -3,6 +3,7 @@
 #include "definitions.h"
 #include "isr/int80.c"
 #include "utils/display.c"
+#include "pic/pic.c"
 
 /*
  * A lot of CPU related sizes have 1 subtracted from their actual size. Why? Fantastic question. After asking Michael
@@ -14,6 +15,8 @@
 void __attribute__ ((section ("kernel_entry"))) kmain() {
     init_screen();
     print("Initialized 32bit protected mode display.\n");
+    remap_pic();
+    print("Remapped the PIC.\n");
     init_idt();
     print("Initialized the interrupt descriptor table.\n");
 }
