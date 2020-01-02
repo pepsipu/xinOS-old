@@ -28,7 +28,7 @@ void remap_pic() {
     io_wait();
     outb(PIC_MASTER_DATA, 4); // alert master that slave is connected via IRQ 2
     io_wait();
-    outb(PIC_MASTER_DATA, ICW4_8086);
+    outb(PIC_MASTER_DATA, ICW4_8086); // tell the PIC to work in x86 mode
 
     /*
      * Redo the initialization sequence for the slave PIC. For this, we set the offset of the IDT entries to 40, which
@@ -40,9 +40,9 @@ void remap_pic() {
     io_wait();
     outb(PIC_MASTER_DATA, 2); // alert slave of cascade ID
     io_wait();
-    outb(PIC_SLAVE_DATA, ICW4_8086);
+    outb(PIC_SLAVE_DATA, ICW4_8086); // tell the PIC to work in x86 mode
     io_wait();
 
-    outb(PIC_MASTER_DATA, 0xfe);
+    outb(PIC_MASTER_DATA, 0xfd);
     outb(PIC_SLAVE_DATA, 0xff);
 }

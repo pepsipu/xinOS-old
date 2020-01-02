@@ -3,8 +3,8 @@
 #include "../definitions.h"
 
 #include "../isr/exceptions/double_fault.c"
-#include "../isr/clock.c"
-
+#include "../pic/hanlders/clock.c"
+#include "../pic/hanlders/keyboard.c"
 
 /*
  * This code sets up the Interrupt Descriptor table (idt). This is used for handling software and hardware interrupts.
@@ -83,5 +83,6 @@ void init_idt() {
     asm volatile ("lidt %0" : : "m"(idtp)); // load the idt, equivalent to "lidt [idtp]"
     register_exceptions();
     register_isr(int32, 32);
+    register_isr(int33, 33);
     asm volatile ("sti");
 }

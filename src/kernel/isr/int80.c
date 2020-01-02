@@ -3,7 +3,7 @@
 struct interrupt_frame;
 #endif
 
-#include "../utils/display.c"
+#include "../utils/text_mode.c"
 
 __attribute__((interrupt)) void int80(struct interrupt_frame* frame) {
     print("unlucky dude");

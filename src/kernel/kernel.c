@@ -2,8 +2,9 @@
 #include "idt/idt.c"
 #include "definitions.h"
 #include "isr/int80.c"
-#include "utils/display.c"
+#include "utils/text_mode.c"
 #include "pic/pic.c"
+#include "vesa/vesa.c"
 
 /*
  * A lot of CPU related sizes have 1 subtracted from their actual size. Why? Fantastic question. After asking Michael
@@ -13,6 +14,7 @@
  */
 
 void __attribute__ ((section ("kernel_entry"))) kmain() {
+    struct vbe_info_structure *info = (struct vbe_info_structure *) 0x8000;
     init_screen();
     print("Initialized 32bit protected mode display.\n");
     remap_pic();

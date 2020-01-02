@@ -17,21 +17,34 @@ struct {
 };
 
 void scroll() {
-    for (int i = 0; i < max_height; i++) {
-
+    for (int i = 1; i < max_height; i++) {
+        memcpy(0xb8000 + (max_width * ((i - 1) * 2)), 0xb8000 + (max_width * (i * 2)), max_width * 2);
     }
+}
+
+void inc_y() {
+
 }
 
 void print(char *s) {
     int len = string_len(s);
     for (int i = 0; i < len; i++) {
         if (pos.x + 1 > max_width) {
-            pos.y++;
-            pos.x = 0;
+            if (pos.y + 1 > max_height) {
+                scroll();
+            } else {
+                pos.y++;
+                pos.x = 0;
+            }
+
         }
         if (s[i] == '\n') {
-            pos.y++;
-            pos.x = 0;
+            if (pos.y + 1 > max_height) {
+                scroll();
+            } else {
+                pos.y++;
+                pos.x = 0;
+            }
             continue;
         }
         *((char *) 0xb8000 + (max_width * (pos.y * 2)) + (pos.x * 2)) = s[i]; // multiply by 2 since each cell in display is a word, one for ascii and one for colors
@@ -42,6 +55,8 @@ void print(char *s) {
 
 void clear_screen() {
     memset((void *) 0xb8000, 0, (max_width * max_height) * 2);
+    pos.y = 0;
+    pos.x = 0;
 }
 
 void init_screen() {

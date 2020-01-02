@@ -24,15 +24,14 @@
 start:
     ; don't modify stack pointer and base pointer, on boot, bp = 0, and sp = to some value in between 0x7c00 (under bootloader) and 0x500 (above bios data)
 
-    ; set es segment to 0x7000
-    mov ax, 0x700 ; will be shifted over by 4
-    mov es, ax
+    xor ax, ax
+    mov es, ax ; clear out segment register
 
     ; print confirmation that we have booted
     print ok
 
     ; read strings/data from disk to memory right above bootloader
-    mov bx, 0xe00 ; data/strings location
+    mov bx, 0x7e00 ; data/strings location
     mov ah, 0x2 ; (bios) read a sector mode
     mov al, 0x1 ; read 1 sector
     mov cx, 0x2 ; ch = cylinder 0, cl = sector 2
@@ -40,8 +39,10 @@ start:
     int DISK ; call bios to handle disk operation
     jc disk_fail ; if the carry flag is set (something went wrong) hang
 
-    xor ax, ax
-    mov es, ax ; set es to 0
+    ; vesa information is required in order to develop the graphical interface
+    mov di, 0x8000 ; load VESA informtion at 0x8000
+    mov ax, 0x4f00 ; (bios) query VESA information
+    int DISPLAY
 
     ; read kernel from disk into memory above strings/data
     mov bx, 0x500 ; kernel location
