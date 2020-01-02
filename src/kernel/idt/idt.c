@@ -2,6 +2,9 @@
 #include "../utils/mem.c"
 #include "../definitions.h"
 
+#include "../isr/exceptions/double_fault.c"
+#include "../isr/clock.c"
+
 
 /*
  * This code sets up the Interrupt Descriptor table (idt). This is used for handling software and hardware interrupts.
@@ -63,6 +66,10 @@ void register_isr(void *isr, uint8_t index) { // register a interrupt service ro
     current_entry->type = 0x8E;
 }
 
+void register_exceptions() {
+    register_isr(int08, 0x8); // double fault
+}
+
 /*
  * The init_idt function will set up the idtp (interrupt descriptor table pointer), a pointer to a structure that
  * describes the idt, which is not to be confused with the idt itself. This structure will store both the size and
@@ -74,4 +81,6 @@ void init_idt() {
     idtp.addr = (uint32_t) idt;
     memset(&idt, 0, 256 * sizeof(struct idt_entry)); // Zero out the memory of the IDT (just in case) to avoid old values from acting as entries
     asm("lidt %0" : : "m"(idtp)); // load the idt, equivalent to "lidt [idtp]"
+    register_exceptions();
+    asm("sti");
 }

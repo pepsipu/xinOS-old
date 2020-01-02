@@ -5,6 +5,6 @@ struct interrupt_frame;
 
 #include "../utils/display.c"
 
-__attribute__((interrupt)) void int80(struct interrupt_frame* frame) {
-    print("unlucky dude");
+__attribute__((interrupt)) void int32(struct interrupt_frame* frame) {
+    print("\nclock\n");
 }
