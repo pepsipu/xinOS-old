@@ -27,7 +27,7 @@ image:
 	# write bootloader and it's strings/data to first 1024 bytes (1kb)
 	dd conv=notrunc if=$(BUILD_DIR)/bootloader/bootloader.bin of=$(BUILD_DIR)/$(OS_IMG) bs=512 count=2 seek=0
 	# write kernel to the rest of image (2.5kb)
-	dd conv=notrunc if=$(BUILD_DIR)/kernel/kernel.bin of=$(BUILD_DIR)/$(OS_IMG) bs=512 count=5 seek=2
+	dd conv=notrunc if=$(BUILD_DIR)/kernel/kernel.bin of=$(BUILD_DIR)/$(OS_IMG) bs=512 count=59 seek=2
 
 clean:
 	rm -r build

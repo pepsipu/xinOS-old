@@ -1,5 +1,12 @@
 #include "../utils/math.c"
+#include "font_bitmap.h"
 
+/*
+#define SSFN_NOIMPLEMENTATION
+#define SSFN_CONSOLEBITMAP_HICOLOR
+
+#include "ssfn.h"
+*/
 struct vbe_mode_info {
     uint16_t attributes;		// deprecated, only bit 7 should be of interest to you, and it indicates the mode supports a linear frame buffer.
     uint8_t window_a;			// deprecated
@@ -60,6 +67,26 @@ void draw_square_coords(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint
     draw_square_size(x1, y1, abs(y2 - y1), abs(x2 - x1), color);
 }
 
+void draw_char(char c, uint16_t x, uint16_t y, uint16_t color) {
+    size_t font_off = c * 16;
+
+    for (uint32_t ny = 0; ny < 16; ny++) {
+        for (uint32_t nx = 0; nx < 8; nx++) {
+            if (__font_bitmap__[font_off + ny] & (1 << (8 - nx))) {
+                draw_pixel(x + nx, y + ny, color);
+            }
+        }
+    }
+}
+
+void draw_string(char *s, uint16_t x, uint16_t y, uint16_t color) {
+    int len = string_len(s);
+    for (int i = 0; i < len; i++) {
+        draw_char(s[i], x + (i*8), y, color);
+    }
+}
+
 void test() {
     draw_background(0xe9ef);
+    draw_string("please work!", 0, 0, 0);
 }
