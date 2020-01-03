@@ -14,11 +14,11 @@
  */
 
 void __attribute__ ((section ("kernel_entry"))) kmain() {
-    struct vbe_info_structure *info = (struct vbe_info_structure *) 0x8000;
+    test();
     init_screen();
-    print("Initialized 32bit protected mode display.\n");
+    // print("Initialized 32bit protected mode display.\n");
     remap_pic();
-    print("Remapped the PIC.\n");
+    // print("Remapped the PIC.\n");
     init_idt();
-    print("Initialized the interrupt descriptor table.\n");
+    // print("Initialized the interrupt descriptor table.\n");
 }

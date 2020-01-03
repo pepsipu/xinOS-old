@@ -11,11 +11,16 @@ void *memset(void *s, int c, size_t n) {
     return s;
 }
 
-void *memcpy(void *dest, const void *src, size_t n) {
-    uint8_t *pdest = dest;
-    const uint8_t *psrc = src;
+void *memset_word(void *s, uint16_t c, size_t n) {
     for (size_t i = 0; i < n; i++) {
-        ((char *) dest)[i] = psrc[i];
+        ((uint16_t *) s)[i] = c;
+    }
+    return s;
+}
+
+void *memcpy(void *dest, const void *src, size_t n) {
+    for (size_t i = 0; i < n; i++) {
+        ((uint8_t *) dest)[i] = ((uint8_t*) src)[i];
     }
     return dest;
 }

@@ -10,8 +10,9 @@ setup:
 
 bootloader:
 	# compile bootloader as raw machine code
-	nasm -f bin src/boot/bootloader.asm -o $(BUILD_DIR)/bootloader/bootloader.bin
-
+	nasm -f elf32 -g3 -F dwarf src/boot/bootloader.asm -o $(BUILD_DIR)/bootloader/bootloader.o
+	ld -Ttext=0x7c00 -melf_i386 $(BUILD_DIR)/bootloader/bootloader.o -o $(BUILD_DIR)/bootloader/bootloader.elf
+	objcopy -O binary $(BUILD_DIR)/bootloader/bootloader.elf $(BUILD_DIR)/bootloader/bootloader.bin
 kernel:
 	# compile an object file of the kernel assuming a standard library won't be available
 	gcc -ffreestanding -c src/kernel/kernel.c -o $(BUILD_DIR)/kernel/kernel.o -m32 -fno-pic -no-pie -g -mgeneral-regs-only -mno-red-zone

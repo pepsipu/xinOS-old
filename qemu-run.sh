@@ -1,1 +1,1 @@
-make all && qemu-system-i386 -fda ./build/shrineos.img -s -machine q35 -S -debugcon stdio
+make all && qemu-system-i386 -fda ./build/shrineos.img -s -machine q35 -S
