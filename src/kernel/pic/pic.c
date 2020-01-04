@@ -43,6 +43,6 @@ void remap_pic() {
     outb(PIC_SLAVE_DATA, ICW4_8086); // tell the PIC to work in x86 mode
     io_wait();
 
-    outb(PIC_MASTER_DATA, 0xfd);
+    outb(PIC_MASTER_DATA, 0xfc); // enable clock and keyboard
     outb(PIC_SLAVE_DATA, 0xff);
 }

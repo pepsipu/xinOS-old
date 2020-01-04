@@ -1,5 +1,6 @@
 #ifndef GRAPHICS
 #define GRAPHICS
+#include "../utils/time.c"
 
 #include "vesa.c"
 
@@ -43,6 +44,7 @@ void draw_string(char *s, uint16_t x, uint16_t y, uint16_t color) {
     int len = string_len(s);
     for (int i = 0; i < len; i++) {
         draw_char(s[i], x + (i*8), y, color);
+        wait(4);
     }
 }
 
