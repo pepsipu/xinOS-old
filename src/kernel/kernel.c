@@ -1,10 +1,7 @@
-#include "allocator.c"
 #include "idt/idt.c"
-#include "definitions.h"
 #include "isr/int80.c"
-#include "utils/text_mode.c"
 #include "pic/pic.c"
-#include "vesa/vesa.c"
+#include "vesa/scenes/main_menu.c"
 
 /*
  * A lot of CPU related sizes have 1 subtracted from their actual size. Why? Fantastic question. After asking Michael
@@ -14,11 +11,11 @@
  */
 
 void __attribute__ ((section ("kernel_entry"))) kmain() {
-    test();
     init_screen();
     // print("Initialized 32bit protected mode display.\n");
     remap_pic();
     // print("Remapped the PIC.\n");
     init_idt();
     // print("Initialized the interrupt descriptor table.\n");
+    load_main_menu();
 }

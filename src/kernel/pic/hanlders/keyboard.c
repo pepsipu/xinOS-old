@@ -3,6 +3,9 @@
 struct interrupt_frame;
 #endif
 
+#ifndef KEYBOARD
+#define KEYBOARD
+
 #include "../../vesa/vesa.c"
 
 static const uint8_t ascii_nomod[] = {
@@ -12,18 +15,23 @@ static const uint8_t ascii_nomod[] = {
         'b', 'n', 'm', ',', '.', '/', '\0', '\0', '\0', ' '
 };
 
+void null_handler(char key) {
+    // do nothing
+}
 
-int last_x = 0;
+
+
+void (*key_down_handler)(char) = null_handler;
+void (*key_up_handler)(char) = null_handler;
 
 __attribute__((interrupt)) void int33(struct interrupt_frame* frame) {
-    char key[2];
     uint8_t scancode = inb(0x60);
     if ((scancode & 128) == 128) {
-        //print("released\n");
+        key_up_handler(ascii_nomod[scancode & 127]);
     } else {
-        //print("pressed\n");
-        draw_char(ascii_nomod[scancode], 0 + last_x, 0, 0);
-        last_x += 8;
+        key_down_handler(ascii_nomod[scancode]);
     }
     outb(0x20,0x20);
 }
+
+#endif

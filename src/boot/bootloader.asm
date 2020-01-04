@@ -1,5 +1,5 @@
 ;***************************************************************************
-; shrineOS bootloader - bootloader.asm
+; xinOS bootloader - bootloader.asm
 ; Sammy Hajhamid
 ; December 25, 2019
 ;
@@ -142,7 +142,7 @@ start_protected:
 
     jmp $
 
-ok db "shrine_ok", 0 ; small confirmation message so we know the bootloader worked
+ok db "xin_ok", 0 ; small confirmation message so we know the bootloader worked
 bad_disk db "disk_bad", 0 ; small message to display in the case that we could not load data from the disk
 times 510-($-$$) db 0 ; pad rest of 510 bytes with 0s
 dw 0xaa55 ; bytes 511 and 512 need to be boot signature
