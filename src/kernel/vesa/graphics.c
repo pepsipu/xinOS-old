@@ -39,12 +39,58 @@ void draw_char(char c, uint16_t x, uint16_t y, uint16_t color) {
 void draw_triangle(uint16_t x, uint16_t y, uint16_t color) {
 
 }
+void draw_line(uint16_t _x1, uint16_t _y1, uint16_t x2, uint16_t y2, uint16_t color, uint8_t thickness) {
+    int y1 = _y1;
+    int x1 = _x1;
+    int dx = abs(x2-x1), sx = x1<x2 ? 1 : -1;
+    int dy = abs(y2-y1), sy = y1<y2 ? 1 : -1;
+    int err = (dx>dy ? dx : -dy)/2, e2;
+
+    for(;;){
+        draw_pixel(x1, y1, color);
+        if (x1==x2 && y1==y2) break;
+        e2 = err;
+        if (e2 >-dx) { err -= dy; x1 += sx; }
+        if (e2 < dy) { err += dx; y1 += sy; }
+    }
+    while (thickness != 0) {
+        draw_line(_x1 + 1, _y1, x2 + 1, y2, --thickness, color);
+    }
+}
 
 void draw_string(char *s, uint16_t x, uint16_t y, uint16_t color) {
     int len = string_len(s);
     for (int i = 0; i < len; i++) {
         draw_char(s[i], x + (i*8), y, color);
         wait(4);
+    }
+}
+
+void outline_circle(uint16_t xc, uint16_t yc, uint16_t x, uint16_t y, uint16_t color) {
+    draw_pixel(xc+x, yc+y, color);
+    draw_pixel(xc-x, yc+y, color);
+    draw_pixel(xc+x, yc-y, color);
+    draw_pixel(xc-x, yc-y, color);
+    draw_pixel(xc+y, yc+x, color);
+    draw_pixel(xc-y, yc+x, color);
+    draw_pixel(xc+y, yc-x, color);
+    draw_pixel(xc-y, yc-x, color);
+}
+
+// bresenham's algorithm, thanks geeksforgeeks
+void draw_circle(uint16_t xc, uint16_t yc, uint16_t r, uint16_t color) {
+    int x = 0;
+    int y = r;
+    int d = 3 - 2 * r;
+    outline_circle(xc, yc, x, y, color);
+    while (y >= x) {
+        x++;
+        if (d > 0) {
+            y--;
+            d = d + 4 * (x - y) + 10;
+        }
+        else d = d + 4 * x + 6;
+        outline_circle(xc, yc, x, y, color);
     }
 }
 

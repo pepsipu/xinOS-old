@@ -149,7 +149,7 @@ dw 0xaa55 ; bytes 511 and 512 need to be boot signature
 
 ; STRINGS/DATA FOR BOOTLOADER - 512 bytes - sector 2
 sector_2:
-load db "Loading ShrineOS...", 0
+load db "Loading xinOS...", 0
 disk_okay db "Disk operations are functional.", 0
 gdt_okay db "Loaded the GDT.", 0
 protected_okay db "Switching from 16-bit real mode to 32-bit protected mode.", 0
