@@ -1,7 +1,7 @@
 #ifndef GRAPHICS
 #define GRAPHICS
 #include "../utils/time.c"
-
+#include "../allocator.c"
 #include "vesa.c"
 
 void draw_pixel(uint16_t x, uint16_t y, uint16_t color) {
@@ -36,9 +36,6 @@ void draw_char(char c, uint16_t x, uint16_t y, uint16_t color) {
     }
 }
 
-void draw_triangle(uint16_t x, uint16_t y, uint16_t color) {
-
-}
 void draw_line(uint16_t _x1, uint16_t _y1, uint16_t x2, uint16_t y2, uint16_t color, uint8_t thickness) {
     int y1 = _y1;
     int x1 = _x1;
@@ -53,16 +50,22 @@ void draw_line(uint16_t _x1, uint16_t _y1, uint16_t x2, uint16_t y2, uint16_t co
         if (e2 >-dx) { err -= dy; x1 += sx; }
         if (e2 < dy) { err += dx; y1 += sy; }
     }
-    while (thickness != 0) {
-        draw_line(_x1 + 1, _y1, x2 + 1, y2, --thickness, color);
+    if (thickness > 1) {
+        draw_line(_x1 + 1, _y1, x2 + 1, y2, color, --thickness);
     }
 }
+
+void draw_triangle(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t x3, uint16_t y3, uint16_t color, uint8_t thickness) {
+    draw_line(x1, y1, x2, y2, color, thickness);
+    draw_line(x2, y2, x3, y3, color, thickness);
+    draw_line(x3, y3, x1, y1, color, thickness);
+}
+
 
 void draw_string(char *s, uint16_t x, uint16_t y, uint16_t color) {
     int len = string_len(s);
     for (int i = 0; i < len; i++) {
         draw_char(s[i], x + (i*8), y, color);
-        wait(4);
     }
 }
 
@@ -92,6 +95,10 @@ void draw_circle(uint16_t xc, uint16_t yc, uint16_t r, uint16_t color) {
         else d = d + 4 * x + 6;
         outline_circle(xc, yc, x, y, color);
     }
+}
+
+uint16_t center_x(uint16_t len, uint16_t container) {
+    return (container / 2) - (len / 2);
 }
 
 #endif

@@ -2,6 +2,7 @@
 #include "isr/int80.c"
 #include "pic/pic.c"
 #include "vesa/scenes/main_menu.c"
+#include "allocator.c"
 
 /*
  * A lot of CPU related sizes have 1 subtracted from their actual size. Why? Fantastic question. After asking Michael
