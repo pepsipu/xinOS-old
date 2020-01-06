@@ -4,7 +4,7 @@
 #include "vesa/scenes/main_menu.c"
 #include "sound/pc_speaker.c"
 #include "sound/wav_parser.c"
-#include "../music/test_audio.h"
+#include "../music/music_list.h"
 
 /*
  * A lot of CPU related sizes have 1 subtracted from their actual size. Why? Fantastic question. After asking Michael
@@ -22,15 +22,6 @@ void __attribute__ ((section ("kernel_entry"))) kmain() {
     init_idt();
     // print("Initialized the interrupt descriptor table.\n");
     load_main_menu();
-
-    int divisor = 1193180 / 1193; // divide PIT's MHz by target hertz
-    outb(0x43, 0x36); // command byte to set channel 0 (timer)
-    outb(0x40, divisor & 0xFF); // send low
-    outb(0x40, divisor >> 8); // send high
-
-    for (int i = 0; i < sizeof(mario) / sizeof(struct beep); i++) {
-        beep(mario[i].freq, mario[i].len, mario[i].delay);
-    }
-
+    play_song(0);
     // print("Remapped the PIC.\n");
 }

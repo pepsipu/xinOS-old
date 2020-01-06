@@ -1,5 +1,6 @@
 #include "../../pic/hanlders/keyboard.c"
 #include "../graphics.c"
+#include "../../../games/game_list.h"
 
 // two palettes, one is icey/cold and the other is sandy/warm
 // default to icey
@@ -22,21 +23,7 @@
 #define GAME_PADDING 40
 #define GAME_HEIGHT 100
 #define GAME_WIDTH 150
-
-struct game {
-    char* name;
-    char* author;
-};
-
-#if 1 // toggle example games
-struct game example_games[] ={
-        {.name = "pee simulator", .author = "pepsipu"},
-        {.name = "osu!", .author = "osu people"},
-        {.name = "american dad", .author = "joe swatson"},
-        {.name = "iran raid", .author = "US navy"},
-        {.name = "die simulator", .author = "dead squad"}
-};
-#endif
+#define GAMES_LENGTH sizeof(games) / sizeof(struct game)
 
 volatile uint8_t game_index = 0;
 volatile uint8_t game_point = 0;
@@ -47,8 +34,8 @@ void load_games() {
     for (int i = 0; i < GAME_DISPLAY_COUNT; i++) {
         int game_screen_space = i * (GAME_PADDING + GAME_WIDTH) + GAME_PADDING / 2;
         draw_square_size(game_screen_space + (remaining_space / 2), 80, GAME_HEIGHT, GAME_WIDTH, SECOND_COLOR);
-        draw_string(example_games[i + game_index].name, center_x(string_len(example_games[i + game_index].name) * 8, GAME_WIDTH) + game_screen_space + (remaining_space / 2),90, HIGHLIGHT_1);
-        draw_string(example_games[i + game_index].author, center_x(string_len(example_games[i + game_index].author) * 8, GAME_WIDTH) + game_screen_space + (remaining_space / 2), 130, HIGHLIGHT_2);
+        draw_string(games[i + game_index].name, center_x(string_len(games[i + game_index].name) * 8, GAME_WIDTH) + game_screen_space + (remaining_space / 2),90, HIGHLIGHT_1);
+        draw_string(games[i + game_index].author, center_x(string_len(games[i + game_index].author) * 8, GAME_WIDTH) + game_screen_space + (remaining_space / 2), 130, HIGHLIGHT_2);
         // draw padding for debugging
         // draw_square_size(game_screen_space + remaining_space / 2 + GAME_WIDTH, 80, GAME_HEIGHT, GAME_PADDING,  HIGHLIGHT_2);
     }
@@ -56,7 +43,7 @@ void load_games() {
 
 void key_press(char c) {
     if (c == 'd') {
-        if ((sizeof(example_games) / sizeof(struct game)) - GAME_DISPLAY_COUNT >= game_index + 1) {
+        if (GAMES_LENGTH - GAME_DISPLAY_COUNT >= game_index + 1) {
             game_index++;
             load_games();
         }

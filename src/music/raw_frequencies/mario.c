@@ -1,4 +1,4 @@
-#include "beep_structure.c"
+#include "../beep_structure.c"
 
 struct beep mario[] = {
         {.freq = 146, .len = 20, .delay = 0},

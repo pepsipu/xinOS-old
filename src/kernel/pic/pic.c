@@ -13,6 +13,13 @@
 
 #include "../utils/io.c"
 
+void set_clock_freq() {
+    int divisor = 1193180 / 1193; // divide PIT's MHz by target hertz
+    outb(0x43, 0x36); // command byte to set channel 0 (timer)
+    outb(0x40, divisor & 0xFF); // send low
+    outb(0x40, divisor >> 8); // send high
+}
+
 void remap_pic() {
     uint8_t master_mask = inb(PIC_MASTER_DATA); // save mask for master PIC
     uint8_t slave_mask = inb(PIC_SLAVE_DATA); // save mask for slave PIC
@@ -45,4 +52,6 @@ void remap_pic() {
 
     outb(PIC_MASTER_DATA, 0xfc); // enable clock and keyboard
     outb(PIC_SLAVE_DATA, 0xff);
+
+    set_clock_freq();
 }
