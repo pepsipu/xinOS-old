@@ -1,6 +1,5 @@
 #include "../../pic/hanlders/keyboard.c"
 #include "../graphics.c"
-#include "../../utils/time.c"
 
 // two palettes, one is icey/cold and the other is sandy/warm
 // default to icey
@@ -29,6 +28,7 @@ struct game {
     char* author;
 };
 
+#if 1 // toggle example games
 struct game example_games[] ={
         {.name = "pee simulator", .author = "pepsipu"},
         {.name = "osu!", .author = "osu people"},
@@ -36,8 +36,10 @@ struct game example_games[] ={
         {.name = "iran raid", .author = "US navy"},
         {.name = "die simulator", .author = "dead squad"}
 };
+#endif
 
-volatile uint16_t game_index = 0;
+volatile uint8_t game_index = 0;
+volatile uint8_t game_point = 0;
 
 void load_games() {
     int remaining_space = vbe_info->width - ((GAME_PADDING + GAME_WIDTH) * GAME_DISPLAY_COUNT);
@@ -53,13 +55,13 @@ void load_games() {
 }
 
 void key_press(char c) {
-    if (c == 'D') {
+    if (c == 'd') {
         if ((sizeof(example_games) / sizeof(struct game)) - GAME_DISPLAY_COUNT >= game_index + 1) {
             game_index++;
             load_games();
         }
     }
-    if (c == 'A') {
+    if (c == 'a') {
         if (game_index - 1 >= 0) {
             game_index--;
             load_games();
@@ -78,10 +80,10 @@ void load_main_menu() {
     // draw arrows for games
     draw_triangle(10, 80 + (GAME_HEIGHT / 2), 30, 80 + 10, 30, 80 + GAME_HEIGHT - 10, SECOND_COLOR, 2);
     draw_triangle(vbe_info->width - 10, 80 + (GAME_HEIGHT / 2), vbe_info->width - 30, 80 + 10, vbe_info->width - 30, 80 + GAME_HEIGHT - 10, SECOND_COLOR, 2);
-
     // draw "a" and "d"
     draw_char('a', 25, 180, HIGHLIGHT_1);
     draw_char('d', vbe_info->width - 25, 180, HIGHLIGHT_1);
+
 }
 
 
