@@ -26,7 +26,7 @@ struct {
         .frequencies = axel,
         .song_name = "axel f",
         .porter = "ararouge",
-        .song_length = sizeof(russia) / sizeof(struct beep)
+        .song_length = sizeof(axel) / sizeof(struct beep)
     },
     {
         .frequencies = tetris,
