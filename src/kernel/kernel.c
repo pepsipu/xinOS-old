@@ -2,7 +2,6 @@
 #include "isr/int80.c"
 #include "pic/pic.c"
 #include "vesa/scenes/main_menu.c"
-#include "sound/pc_speaker.c"
 #include "sound/wav_parser.c"
 #include "../music/music_list.h"
 
@@ -22,6 +21,5 @@ void __attribute__ ((section ("kernel_entry"))) kmain() {
     init_idt();
     // print("Initialized the interrupt descriptor table.\n");
     load_main_menu();
-    play_song(0);
     // print("Remapped the PIC.\n");
 }

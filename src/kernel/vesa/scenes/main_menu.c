@@ -1,7 +1,7 @@
 #include "../../pic/hanlders/keyboard.c"
 #include "../graphics.c"
 #include "../../../games/game_list.h"
-
+#include "../../sound/pc_speaker.c"
 // two palettes, one is icey/cold and the other is sandy/warm
 // default to icey
 
@@ -19,23 +19,26 @@
 #define TITLE_MSG "xinOS: XIN isn't NES!"
 #define SUBTITLE_MSG "An operating system to bring back the days of the NES."
 
+#define GAME_Y_POS 150
 #define GAME_DISPLAY_COUNT 3
 #define GAME_PADDING 40
 #define GAME_HEIGHT 100
 #define GAME_WIDTH 150
 #define GAMES_LENGTH sizeof(games) / sizeof(struct game)
 
+volatile uint16_t action = 0;
+
 volatile uint8_t game_index = 0;
 volatile uint8_t game_point = 0;
 
 void load_games() {
     int remaining_space = vbe_info->width - ((GAME_PADDING + GAME_WIDTH) * GAME_DISPLAY_COUNT);
-    draw_square_size((remaining_space / 2) + GAME_PADDING / 2, 80 + GAME_HEIGHT, GAME_DISPLAY_COUNT * ((GAME_PADDING + GAME_WIDTH) + GAME_PADDING / 2), GAME_WIDTH + GAME_PADDING, MAIN_COLOR);
+    draw_square_size((remaining_space / 2) + GAME_PADDING / 2, GAME_Y_POS + GAME_HEIGHT, GAME_DISPLAY_COUNT * ((GAME_PADDING + GAME_WIDTH) + GAME_PADDING / 2), GAME_WIDTH + GAME_PADDING, MAIN_COLOR);
     for (int i = 0; i < GAME_DISPLAY_COUNT; i++) {
         int game_screen_space = i * (GAME_PADDING + GAME_WIDTH) + GAME_PADDING / 2;
-        draw_square_size(game_screen_space + (remaining_space / 2), 80, GAME_HEIGHT, GAME_WIDTH, SECOND_COLOR);
-        draw_string(games[i + game_index].name, center_x(string_len(games[i + game_index].name) * 8, GAME_WIDTH) + game_screen_space + (remaining_space / 2),90, HIGHLIGHT_1);
-        draw_string(games[i + game_index].author, center_x(string_len(games[i + game_index].author) * 8, GAME_WIDTH) + game_screen_space + (remaining_space / 2), 130, HIGHLIGHT_2);
+        draw_square_size(game_screen_space + (remaining_space / 2), GAME_Y_POS, GAME_HEIGHT, GAME_WIDTH, SECOND_COLOR);
+        draw_string(games[i + game_index].name, center_x(string_len(games[i + game_index].name) * 8, GAME_WIDTH) + game_screen_space + (remaining_space / 2),GAME_Y_POS + 10, HIGHLIGHT_1);
+        draw_string(games[i + game_index].author, center_x(string_len(games[i + game_index].author) * 8, GAME_WIDTH) + game_screen_space + (remaining_space / 2), GAME_Y_POS + 40, HIGHLIGHT_2);
         // draw padding for debugging
         // draw_square_size(game_screen_space + remaining_space / 2 + GAME_WIDTH, 80, GAME_HEIGHT, GAME_PADDING,  HIGHLIGHT_2);
     }
@@ -46,12 +49,16 @@ void key_press(char c) {
         if (GAMES_LENGTH - GAME_DISPLAY_COUNT >= game_index + 1) {
             game_index++;
             load_games();
+        } else {
+            action |= 1;
         }
     }
     if (c == 'a') {
         if (game_index - 1 >= 0) {
             game_index--;
             load_games();
+        } else {
+            action |= 1;
         }
     }
 
@@ -65,12 +72,27 @@ void load_main_menu() {
 
     load_games();
     // draw arrows for games
-    draw_triangle(10, 80 + (GAME_HEIGHT / 2), 30, 80 + 10, 30, 80 + GAME_HEIGHT - 10, SECOND_COLOR, 2);
-    draw_triangle(vbe_info->width - 10, 80 + (GAME_HEIGHT / 2), vbe_info->width - 30, 80 + 10, vbe_info->width - 30, 80 + GAME_HEIGHT - 10, SECOND_COLOR, 2);
+    draw_triangle(10, GAME_Y_POS + (GAME_HEIGHT / 2), 30, GAME_Y_POS + 10, 30, GAME_Y_POS + GAME_HEIGHT - 10, SECOND_COLOR, 2);
+    draw_triangle(vbe_info->width - 10, GAME_Y_POS + (GAME_HEIGHT / 2), vbe_info->width - 30, GAME_Y_POS + 10, vbe_info->width - 30, GAME_Y_POS + GAME_HEIGHT - 10, SECOND_COLOR, 2);
     // draw "a" and "d"
-    draw_char('a', 25, 180, HIGHLIGHT_1);
-    draw_char('d', vbe_info->width - 25, 180, HIGHLIGHT_1);
-
+    draw_char('a', 25, GAME_Y_POS + 100, HIGHLIGHT_1);
+    draw_char('d', vbe_info->width - 25, GAME_Y_POS + 100, HIGHLIGHT_1);
+    /*
+     * Because interrupts cannot call beeps and other actions (soft locks the os), interrupts can "request" a beep for
+     * the main thread to call. This is done through the action variable. Each bit of the action variable is a different
+     * action the main thread should perform on behalf of the interrupt
+     */
+    while (1) {
+        asm volatile("hlt"); // wait until interrupt
+        if (action) {
+            if (action == 0xff) { // quit action
+                break;
+            } else if (action & 1) { // beep request
+                beep(100, 100, 0);
+                action &= 0xfe; // disable beep request bit
+            }
+        }
+    }
 }
 
 

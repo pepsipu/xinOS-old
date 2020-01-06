@@ -1,12 +1,14 @@
 #ifndef TIME
 #define TIME
 
-void wait(int time) {
+void wait(uint32_t milliseconds) {
+    if (milliseconds == 0) {
+        return;
+    }
     waiting = 1;
-    uint32_t wait_until = time_count + time;
     check:
     asm volatile ("hlt");
-    if (time_count < wait_until) {
+    if (time_count < milliseconds) {
         goto check;
     }
     waiting = 0;

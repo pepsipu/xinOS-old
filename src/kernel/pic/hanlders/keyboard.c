@@ -210,8 +210,6 @@ __attribute__((interrupt)) void int33(struct interrupt_frame *frame) {
             key_down_handler(kbdse_alt[scancode]);
         }
     }
-
-
     outb(0x20, 0x20);
 }
 

@@ -1,4 +1,5 @@
-#include "../utils/time.c"
+#ifndef PC_SPEAKER
+#define PC_SPEAKER
 
 void set_pit(uint32_t div) {
     outb(0x43, 0xb6);
@@ -32,3 +33,5 @@ void beep(uint16_t freq, uint16_t len, uint16_t time_in_between) {
     nosound();
     wait(time_in_between);
 }
+
+#endif
