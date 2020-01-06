@@ -15,17 +15,22 @@
  */
 
 void __attribute__ ((section ("kernel_entry"))) kmain() {
-    parse_wav(menu_navigate_wav);
+    //play_wav(menu_navigate_wav);
     // init_screen();
     // print("Initialized 32bit protected mode display.\n");
     remap_pic();
-
     init_idt();
     // print("Initialized the interrupt descriptor table.\n");
     load_main_menu();
+
     int divisor = 1193180 / 1193; // divide PIT's MHz by target hertz
     outb(0x43, 0x36); // command byte to set channel 0 (timer)
     outb(0x40, divisor & 0xFF); // send low
     outb(0x40, divisor >> 8); // send high
+
+    for (int i = 0; i < sizeof(mario) / sizeof(struct beep); i++) {
+        beep(mario[i].freq, mario[i].len, mario[i].delay);
+    }
+
     // print("Remapped the PIC.\n");
 }

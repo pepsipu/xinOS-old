@@ -25,3 +25,11 @@ void play_sound(uint32_t freq) {
 void nosound() {
     outb(0x61, inb(0x61) & 0xFC);
 }
+
+void beep(uint16_t freq, uint16_t len, uint16_t time_in_between) {
+    play_sound(freq);
+    wait(len);
+    nosound();
+    wait(time_in_between);
+}
+
