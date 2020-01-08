@@ -31,7 +31,15 @@ volatile uint16_t action = 0;
 volatile uint8_t game_index = 0;
 volatile uint8_t game_point = 0;
 
+void draw_game_pointer() {
+    int remaining_space = vbe_info->width - ((GAME_PADDING + GAME_WIDTH) * GAME_DISPLAY_COUNT);
+    draw_square_size((remaining_space / 2) + GAME_PADDING / 2, GAME_Y_POS + GAME_HEIGHT, 30, (GAME_PADDING + GAME_WIDTH) * GAME_DISPLAY_COUNT - GAME_PADDING, MAIN_COLOR);
+    int game_start_pos = (remaining_space / 2) + ((GAME_PADDING + GAME_WIDTH) * game_point) + GAME_PADDING / 2;
+    draw_triangle(game_start_pos + (GAME_WIDTH / 2), GAME_Y_POS + GAME_HEIGHT + 5, game_start_pos + (GAME_WIDTH / 2) + 15, GAME_Y_POS + GAME_HEIGHT + 25, game_start_pos + (GAME_WIDTH / 2) - 15, GAME_Y_POS + GAME_HEIGHT + 25, 0, 1);
+}
+
 void load_games() {
+    // this code is a mess, it's mostly to center the boxes with variable length padding. Don't touch, it's fragile.
     int remaining_space = vbe_info->width - ((GAME_PADDING + GAME_WIDTH) * GAME_DISPLAY_COUNT);
     draw_square_size((remaining_space / 2) + GAME_PADDING / 2, GAME_Y_POS + GAME_HEIGHT, GAME_DISPLAY_COUNT * ((GAME_PADDING + GAME_WIDTH) + GAME_PADDING / 2), GAME_WIDTH + GAME_PADDING, MAIN_COLOR);
     for (int i = 0; i < GAME_DISPLAY_COUNT; i++) {
@@ -41,14 +49,20 @@ void load_games() {
         draw_string(games[i + game_index].author, center_x(string_len(games[i + game_index].author) * 8, GAME_WIDTH) + game_screen_space + (remaining_space / 2), GAME_Y_POS + 40, HIGHLIGHT_2);
         // draw padding for debugging
         // draw_square_size(game_screen_space + remaining_space / 2 + GAME_WIDTH, 80, GAME_HEIGHT, GAME_PADDING,  HIGHLIGHT_2);
+        draw_game_pointer();
     }
 }
+
+
 
 void key_press(char c) {
     if (c == 'd') {
         if (GAMES_LENGTH - GAME_DISPLAY_COUNT >= game_index + 1) {
             game_index++;
             load_games();
+        } else if (game_point != 2) {
+            game_point++;
+            draw_game_pointer();
         } else {
             action |= 1;
         }
@@ -57,6 +71,9 @@ void key_press(char c) {
         if (game_index - 1 >= 0) {
             game_index--;
             load_games();
+        } else if (game_point != 0) {
+            game_point--;
+            draw_game_pointer();
         } else {
             action |= 1;
         }
@@ -94,17 +111,3 @@ void load_main_menu() {
         }
     }
 }
-
-
-
-/*void load_main_menu() {
-    draw_background(0x7775);
-    draw_circle(120, 120, 100, 0);
-    draw_line(70, 80, 70, 120, 0, 3);
-    draw_line(120, 80, 120, 120, 0, 3);
-    draw_line(90, 160, 70, 130, 0, 3);
-    draw_line(90, 160, 120, 130, 0, 3);
-    draw_triangle(300, 400, 325, 325, 350, 350, 0, 1);
-    draw_triangle(200, 220, 245, 278, 245, 220, 0, 1);
-    draw_string("i require your soul", 20, 240, 0);
-}*/
