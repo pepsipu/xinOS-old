@@ -1,16 +1,17 @@
 #include <stdint.h>
-#include "../utils/mem.c"
-#include "../definitions.h"
+#include <kernel/utils/mem.c>
+#include <kernel/definitions.h>
 
-#include "../isr/exceptions/double_fault.c"
-#include "../pic/hanlders/clock.c"
-#include "../pic/hanlders/keyboard.c"
+#include <kernel/isr/exceptions/double_fault.c>
+#include <kernel/pic/hanlders/clock.c>
+#include <kernel/pic/hanlders/keyboard.c>
 
 /*
  * This code sets up the Interrupt Descriptor table (idt). This is used for handling software and hardware interrupts.
  * More information can be found at https://wiki.osdev.org/IDT. In addition, all structures have the "packed" attribute
  * in order to remove padding between the attributes of the structure.
 */
+
 struct idt_entry {
     uint16_t offset_1; // offset bits 0..15
     uint16_t selector; // a code segment selector in GDT or LDT
@@ -82,7 +83,7 @@ void init_idt() {
     memset(&idt, 0, 256 * sizeof(struct idt_entry)); // Zero out the memory of the IDT (just in case) to avoid old values from acting as entries
     asm volatile ("lidt %0" : : "m"(idtp)); // load the idt, equivalent to "lidt [idtp]"
     register_exceptions();
-    register_isr(int32, 32);
-    register_isr(int33, 33);
+    register_isr(int32, 32); // register clock
+    register_isr(int33, 33); // register keyboard
     asm volatile ("sti");
 }

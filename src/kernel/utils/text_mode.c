@@ -1,4 +1,6 @@
-#ifndef DISPLAY
+// this code is not used. this is for text mode, but xinOS will not use text mode, so this code is kept for possible error catching in the future.
+
+/*#ifndef DISPLAY
 #define DISPLAY
 
 #include "io.c"
@@ -66,3 +68,4 @@ void init_screen() {
 }
 
 #endif
+*/

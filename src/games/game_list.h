@@ -1,10 +1,11 @@
+#include <games/XinAdventures/xa_main.c>
+
 struct game {
     char *name;
     char *author;
+    int (*init)();
 };
+
 struct game games[] = {
-        {.name = "Super Brothers", .author = "Nentendo Of Austria"},
-        {.name = "Minecraft", .author = "Mojang"},
-        {.name = "owo???", .author = "uwu???"},
-        {.name = "Average Brothers", .author = "peter griffin"}
+        {.name = "XinAdventures", .author = "pepsipu", .init = xa_main},
 };

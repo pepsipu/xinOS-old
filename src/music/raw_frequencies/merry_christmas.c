@@ -1,6 +1,6 @@
 #include "../beep_structure.c"
 
-struct beep merry_christmas[]
+struct beep merry_christmas[] =
 {
 	{.freq = 261, .len = 500},
 	{.freq = 349, .len = 500},
