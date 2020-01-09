@@ -2,6 +2,7 @@
 #include "raw_frequencies/axelf.c"
 #include "raw_frequencies/tetris.c"
 #include "raw_frequencies/russian_anthem.c"
+#include "raw_frequencies/merry_christmas.c"
 #include "beep_structure.c"
 
 struct {
@@ -33,6 +34,12 @@ struct {
         .song_name = "tetris",
         .porter = "ararouge",
         .song_length = sizeof(tetris) / sizeof(struct beep)
+    },
+    {
+        .frequencies = merry_christmas,
+        .song_name = "christmas",
+        .porter = "ararouge",
+        .song_length = sizeof(merry_christmas) / sizeof(struct beep)
     }
 };
 void play_song(int index) {
