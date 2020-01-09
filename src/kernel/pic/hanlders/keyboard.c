@@ -6,7 +6,7 @@ struct interrupt_frame;
 #ifndef KEYBOARD
 #define KEYBOARD
 
-#include "../../vesa/vesa.c"
+#include <kernel/utils/io.c>
 
 // keyboard maps and stuff are stolen from exscapeOS
 

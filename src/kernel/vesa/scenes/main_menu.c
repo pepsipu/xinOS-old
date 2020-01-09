@@ -1,7 +1,9 @@
-#include "../../pic/hanlders/keyboard.c"
-#include "../graphics.c"
-#include "../../../games/game_list.h"
-#include "../../sound/pc_speaker.c"
+#include <kernel/pic/hanlders/keyboard.c>
+#include <kernel/vesa/graphics.c>
+#include <games/game_list.h>
+#include <kernel/sound/pc_speaker.c>
+#include <kernel/utils/strings.c>
+
 // two palettes, one is icey/cold and the other is sandy/warm
 // default to icey
 
@@ -45,8 +47,10 @@ void load_games() {
     for (int i = 0; i < GAME_DISPLAY_COUNT; i++) {
         int game_screen_space = i * (GAME_PADDING + GAME_WIDTH) + GAME_PADDING / 2;
         draw_square_size(game_screen_space + (remaining_space / 2), GAME_Y_POS, GAME_HEIGHT, GAME_WIDTH, SECOND_COLOR);
-        draw_string(games[i + game_index].name, center_x(string_len(games[i + game_index].name) * 8, GAME_WIDTH) + game_screen_space + (remaining_space / 2),GAME_Y_POS + 10, HIGHLIGHT_1);
-        draw_string(games[i + game_index].author, center_x(string_len(games[i + game_index].author) * 8, GAME_WIDTH) + game_screen_space + (remaining_space / 2), GAME_Y_POS + 40, HIGHLIGHT_2);
+        if (i < GAMES_LENGTH) {
+            draw_string(games[i + game_index].name, center_x(string_len(games[i + game_index].name) * 8, GAME_WIDTH) + game_screen_space + (remaining_space / 2),GAME_Y_POS + 10, HIGHLIGHT_1);
+            draw_string(games[i + game_index].author, center_x(string_len(games[i + game_index].author) * 8, GAME_WIDTH) + game_screen_space + (remaining_space / 2), GAME_Y_POS + 40, HIGHLIGHT_2);
+        }
         // draw padding for debugging
         // draw_square_size(game_screen_space + remaining_space / 2 + GAME_WIDTH, 80, GAME_HEIGHT, GAME_PADDING,  HIGHLIGHT_2);
         draw_game_pointer();
@@ -57,7 +61,7 @@ void load_games() {
 
 void key_press(char c) {
     if (c == 'd') {
-        if (GAMES_LENGTH - GAME_DISPLAY_COUNT >= game_index + 1) {
+        if (GAMES_LENGTH - GAME_DISPLAY_COUNT >= game_index + 1 && game_index + 1 > GAMES_LENGTH) {
             game_index++;
             load_games();
         } else if (game_point != 2) {
@@ -66,8 +70,7 @@ void key_press(char c) {
         } else {
             action |= 1;
         }
-    }
-    if (c == 'a') {
+    } else if (c == 'a') {
         if (game_index - 1 >= 0) {
             game_index--;
             load_games();
@@ -75,8 +78,10 @@ void key_press(char c) {
             game_point--;
             draw_game_pointer();
         } else {
-            action |= 1;
+            action |= 1; // toggle bit 0, the bit for beeping
         }
+    } else if (c == '\n') {
+        action |= 2; // toggle bit 1, the bit for launching a game
     }
 
 }
@@ -100,13 +105,18 @@ void load_main_menu() {
      * action the main thread should perform on behalf of the interrupt
      */
     while (1) {
-        asm volatile("hlt"); // wait until interrupt
+        asm volatile("hlt"); // wait until interrupt, specifically the keyboard interrupt
         if (action) {
             if (action == 0xff) { // quit action
                 break;
             } else if (action & 1) { // beep request
                 beep(100, 100, 0);
                 action &= 0xfe; // disable beep request bit
+            } else if (action & 2) { // launch game request
+                if (GAMES_LENGTH - 1>= game_index + game_point) {
+                    games[game_point + game_index].init();
+                }
+                action &= 0xfd; // disable launch game bit
             }
         }
     }

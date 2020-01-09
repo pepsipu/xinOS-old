@@ -33,5 +33,4 @@ void beep(uint16_t freq, uint16_t len, uint16_t time_in_between) {
     nosound();
     wait(time_in_between);
 }
-
 #endif
