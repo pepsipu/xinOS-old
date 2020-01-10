@@ -1,7 +1,6 @@
 #include <kernel/idt/idt.c>
 #include <kernel/pic/pic.c>
 #include <kernel/vesa/scenes/main_menu.c>
-#include <kernel/sound/wav_parser.c>
 
 /*
  * A lot of CPU related sizes have 1 subtracted from their actual size. Why? Fantastic question. After asking Michael

@@ -1,3 +1,6 @@
+#ifndef MAIN_MENU
+#define MAIN_MENU
+
 #include <kernel/pic/hanlders/keyboard.c>
 #include <kernel/vesa/graphics.c>
 #include <games/game_list.h>
@@ -7,10 +10,10 @@
 // two palettes, one is icey/cold and the other is sandy/warm
 // default to icey
 
-#define BIG_MAIN_COLOR 0x222831 // 0x2f3032
-#define BIG_SECOND_COLOR 0x393e46 // 0x383a56
-#define BIG_HIGHLIGHT_2 0x00adb5 // 0xb0a565
-#define BIG_HIGHLIGHT_1 0xeeeeee // 0xede68a
+#define BIG_MAIN_COLOR 0x363333 //0x222831 // 0x2f3032
+#define BIG_SECOND_COLOR 0x272121 // 0x393e46 // 0x383a56
+#define BIG_HIGHLIGHT_2 0xf6e9e9 // 0x00adb5 // 0xb0a565
+#define BIG_HIGHLIGHT_1 0xe16428 // 0xeeeeee // 0xede68a
 
 // shift the RBG888 colors into RBG565, with a small loss of detail
 #define MAIN_COLOR (((BIG_MAIN_COLOR&0xf80000)>>8) + ((BIG_MAIN_COLOR&0xfc00)>>5) + ((BIG_MAIN_COLOR&0xf8)>>3))
@@ -113,11 +116,13 @@ void load_main_menu() {
                 beep(100, 100, 0);
                 action &= 0xfe; // disable beep request bit
             } else if (action & 2) { // launch game request
+                action &= 0xfd; // disable launch game bit
                 if (GAMES_LENGTH - 1>= game_index + game_point) {
                     games[game_point + game_index].init();
                 }
-                action &= 0xfd; // disable launch game bit
             }
         }
     }
 }
+
+#endif

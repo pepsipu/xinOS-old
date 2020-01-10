@@ -10,7 +10,7 @@
 ;[org 0x7c00] remove org directive since linker script will handle this
 [bits 16]
 
-%define KERNEL_SECTORS 59
+%define KERNEL_SECTORS 120
 
 %define VESA_MODE 0x0111
 
@@ -42,7 +42,10 @@ start:
     jc disk_fail ; if the carry flag is set (something went wrong) hang
 
     ; read kernel from disk into memory above strings/data
-    mov bx, 0x500 ; kernel location
+    mov ax, 0xffff
+    mov es, ax
+
+    mov bx, 0x10 ; kernel location = es:bx = 0x100000
     mov ah, 0x2 ; (bios) read a sector mode
     mov al, KERNEL_SECTORS ; read as many sectors as needed
     mov cx, 0x3 ; ch = cylinder 0, cl = sector 3
@@ -50,6 +53,9 @@ start:
     int DISK ; call bios to handle disk operation
     jc disk_fail ; if the carry flag is set (something went wrong) hang
     ; print messages
+    xor ax, ax
+    mov es, ax
+
     print load ; just a helpful message
     print disk_okay ; since we could load the strings, we know disk is fine
 
@@ -138,7 +144,7 @@ start_protected:
     mov fs, ax
     mov ss, ax
 
-    call 0x500 ; call the location the kernel was loaded to
+    call 0x100000 ; call the location the kernel was loaded to
 
     jmp $
 

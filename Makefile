@@ -22,12 +22,12 @@ kernel:
 	objcopy -O binary $(BUILD_DIR)/kernel/kernel.elf $(BUILD_DIR)/kernel/kernel.bin
 
 image:
-	# create a blank image 32kb large
-	dd if=/dev/zero of=$(BUILD_DIR)/$(OS_IMG) bs=512 count=64
+	# create a blank image 256kb large
+	dd if=/dev/zero of=$(BUILD_DIR)/$(OS_IMG) bs=512 count=512
 	# write bootloader and it's strings/data to first 1024 bytes (1kb)
 	dd conv=notrunc if=$(BUILD_DIR)/bootloader/bootloader.bin of=$(BUILD_DIR)/$(OS_IMG) bs=512 count=2 seek=0
-	# write kernel to the rest of image (2.5kb)
-	dd conv=notrunc if=$(BUILD_DIR)/kernel/kernel.bin of=$(BUILD_DIR)/$(OS_IMG) bs=512 count=59 seek=2
+	# write kernel to the rest of image (arb size)
+	dd conv=notrunc if=$(BUILD_DIR)/kernel/kernel.bin of=$(BUILD_DIR)/$(OS_IMG) bs=512 seek=2
 
 clean:
 	rm -r build
