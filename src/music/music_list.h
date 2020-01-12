@@ -4,6 +4,7 @@
 #include "raw_frequencies/russian_anthem.c"
 #include "raw_frequencies/merry_christmas.c"
 #include "beep_structure.c"
+#include <kernel/sound/pc_speaker.c>
 
 struct {
     char *song_name;

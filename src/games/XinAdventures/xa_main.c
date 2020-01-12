@@ -2,7 +2,6 @@
 #include <music/music_list.h>
 #include <kernel/utils/misc.c>
 #include <kernel/utils/bmp_loader.c>
-#include <games/XinAdventures/images/owo.c>
 
 #define XA_BIG_MAIN_COLOR 0x363333 // 0x2f3032
 #define XA_BIG_SECOND_COLOR 0x272121 // 0x383a56
@@ -24,8 +23,7 @@ int xa_main() {
     draw_string(SUBTITLE, center_x(string_len(SUBTITLE) * 8, vbe_info->width), 70, XA_HIGHLIGHT_1);
     draw_line(70, 0, 70, vbe_info->height, XA_SECOND_COLOR, 20);
     draw_line(vbe_info->width - 70 - 20, 0, vbe_info->width - 70 - 20, vbe_info->height, XA_SECOND_COLOR, 20);
-    draw_bmp(owo_bmp, 0, 0);
-    play_song(1);
+    play_song(4);
     exit_to_main();
     return 1;
 }

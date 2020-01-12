@@ -8,4 +8,5 @@ struct game {
 
 struct game games[] = {
         {.name = "XinAdventures", .author = "pepsipu", .init = xa_main},
+        {.name = "bruh", .author = "nice", .init = 0}
 };

@@ -30,4 +30,18 @@ void draw_bmp(uint8_t *bmp, uint16_t x, uint16_t y) {
             draw_pixel(x + k, y + i, *(pixels + k + img->width * (img->height - i - 1))); // bmps are stored upside down
         }
     }
-};
+}
+
+void draw_bmp_mask(uint8_t *bmp, uint16_t x, uint16_t y, uint16_t mask) {
+    struct file_header *file = bmp;
+    struct image_header *img = bmp + sizeof(struct file_header);
+    uint16_t *pixels = bmp + file->pixel_data;
+    for (uint32_t i = 0; i < img->height; i++) {
+        for (uint32_t k = 0; k < img->width; k++) {
+            uint16_t pixel = *(pixels + k + img->width * (img->height - i - 1));
+            if (pixel != mask) {
+                draw_pixel(x + k, y + i, pixel);
+            }
+        }
+    }
+}

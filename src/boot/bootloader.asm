@@ -10,7 +10,8 @@
 ;[org 0x7c00] remove org directive since linker script will handle this
 [bits 16]
 
-%define KERNEL_SECTORS 120
+%define KERNEL_SECTORS 255
+%define MEM_PER_SECTORS 128 * 512
 
 %define VESA_MODE 0x0111
 
@@ -22,6 +23,36 @@
     call print_si
 %endmacro
 
+%macro load_kernel 0
+    mov ax, 0xffff ; base address will be 0xfffff
+    mov es, ax ; set segment
+    %assign i 0
+    %assign remainder KERNEL_SECTORS % 128
+    %assign iterations ((KERNEL_SECTORS - remainder) / 128) - 1 ; loop as many times as possible for 128 sectors
+    %rep iterations
+    %assign current_mem 0x10 + (i * MEM_PER_SECTORS)
+    mov bx, current_mem ; kernel location = es:bx = 0x100000
+    mov ah, 0x2 ; (bios) read a sector mode
+    mov al, 128 ; read as many sectors as needed
+    mov ch, 0 ; ch = cylinder 0, cl = sector 3
+    %assign current_sector 3 + (128 * i)
+    mov cl, current_sector
+    mov dh, 0x0 ; head 0
+    int DISK ; call bios to handle disk operation
+    jc disk_fail ; if the carry flag is set (something went wrong) hang
+    %assign i i + 1
+    %endrep
+    %assign current_mem 0x10 + (i * MEM_PER_SECTORS)
+    mov bx, current_mem ; kernel location = es:bx = 0x100000
+    mov ah, 0x2 ; (bios) read a sector mode
+    mov al, remainder ; read as many sectors as needed
+    mov ch, 0 ; ch = cylinder 0, cl = sector 3
+    %assign current_sector 3 + (128 * i)
+    mov cl, current_sector
+    mov dh, 0x0 ; head 0
+    int DISK ; call bios to handle disk operation
+    jc disk_fail ; if the carry flag is set (something went wrong) hang
+%endmacro
 ; BOOTLOADER - 512 bytes - sector 1
 start:
     ; don't modify stack pointer and base pointer, on boot, bp = 0, and sp = to some value in between 0x7c00 (under bootloader) and 0x500 (above bios data)
@@ -42,9 +73,9 @@ start:
     jc disk_fail ; if the carry flag is set (something went wrong) hang
 
     ; read kernel from disk into memory above strings/data
+    %if 0
     mov ax, 0xffff
     mov es, ax
-
     mov bx, 0x10 ; kernel location = es:bx = 0x100000
     mov ah, 0x2 ; (bios) read a sector mode
     mov al, KERNEL_SECTORS ; read as many sectors as needed
@@ -53,6 +84,10 @@ start:
     int DISK ; call bios to handle disk operation
     jc disk_fail ; if the carry flag is set (something went wrong) hang
     ; print messages
+    %endif
+
+    load_kernel
+
     xor ax, ax
     mov es, ax
 
@@ -113,7 +148,6 @@ hang:
 
 disk_fail:
     print bad_disk
-    print ok
     jmp hang
 
 vesa_fail:
