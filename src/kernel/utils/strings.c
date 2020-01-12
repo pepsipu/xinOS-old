@@ -1,12 +1,22 @@
 #ifndef STRINGS
 #define STRINGS
 
-#include <kernel/allocator.c>
+
 
 int string_len(char* s) {
     int i = 0;
     while (s[i] != '\0') i++;
     return i;
+}
+
+int string_cmp(char *s1, char *s2) {
+    int len = string_len(s1);
+    for (int i = 0; i < len; i++) {
+        if (s1[i] != s2[i] || s2[i] == '\0') {
+            return 0;
+        }
+    }
+    return 1;
 }
 
 void reverse(char *s) {

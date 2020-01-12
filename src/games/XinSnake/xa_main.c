@@ -1,19 +1,18 @@
 #include <kernel/vesa/graphics.c>
 #include <music/music_list.h>
 #include <kernel/utils/misc.c>
-#include <kernel/utils/bmp_loader.c>
 #include <kernel/utils/rand.c>
 
-#define XA_BIG_MAIN_COLOR 0x363333 // 0x2f3032
-#define XA_BIG_SECOND_COLOR 0x272121 // 0x383a56
-#define XA_BIG_HIGHLIGHT_2 0xe16428 // 0xb0a565
-#define XA_BIG_HIGHLIGHT_1 0xf6e9e9 // 0xede68a
+#define XS_BIG_MAIN_COLOR 0x363333 // 0x2f3032
+#define XS_BIG_SECOND_COLOR 0x272121 // 0x383a56
+#define XS_BIG_HIGHLIGHT_2 0xe16428 // 0xb0a565
+#define XS_BIG_HIGHLIGHT_1 0xf6e9e9 // 0xede68a
 
 // shift the RBG888 colors into RBG565, with a small loss of detail
-#define XA_MAIN_COLOR (((XA_BIG_MAIN_COLOR&0xf80000)>>8) + ((XA_BIG_MAIN_COLOR&0xfc00)>>5) + ((XA_BIG_MAIN_COLOR&0xf8)>>3))
-#define XA_SECOND_COLOR (((XA_BIG_SECOND_COLOR&0xf80000)>>8) + ((XA_BIG_SECOND_COLOR&0xfc00)>>5) + ((XA_BIG_SECOND_COLOR&0xf8)>>3))
-#define XA_HIGHLIGHT_2 (((XA_BIG_HIGHLIGHT_2&0xf80000)>>8) + ((XA_BIG_HIGHLIGHT_2&0xfc00)>>5) + ((XA_BIG_HIGHLIGHT_2&0xf8)>>3))
-#define XA_HIGHLIGHT_1 (((XA_BIG_HIGHLIGHT_1&0xf80000)>>8) + ((XA_BIG_HIGHLIGHT_1&0xfc00)>>5) + ((XA_BIG_HIGHLIGHT_1&0xf8)>>3))
+#define XS_MAIN_COLOR (((XS_BIG_MAIN_COLOR&0xf80000)>>8) + ((XS_BIG_MAIN_COLOR&0xfc00)>>5) + ((XS_BIG_MAIN_COLOR&0xf8)>>3))
+#define XS_SECOND_COLOR (((XS_BIG_SECOND_COLOR&0xf80000)>>8) + ((XS_BIG_SECOND_COLOR&0xfc00)>>5) + ((XS_BIG_SECOND_COLOR&0xf8)>>3))
+#define XS_HIGHLIGHT_2 (((XS_BIG_HIGHLIGHT_2&0xf80000)>>8) + ((XS_BIG_HIGHLIGHT_2&0xfc00)>>5) + ((XS_BIG_HIGHLIGHT_2&0xf8)>>3))
+#define XS_HIGHLIGHT_1 (((XS_BIG_HIGHLIGHT_1&0xf80000)>>8) + ((XS_BIG_HIGHLIGHT_1&0xfc00)>>5) + ((XS_BIG_HIGHLIGHT_1&0xf8)>>3))
 
 #define TITLE "XinSnake"
 #define SUBTITLE "A game to demonstrate the abilities of xinOS"
@@ -45,7 +44,7 @@ struct {
 
 uint8_t volatile exit_flag = 0;
 
-void xa_key_handler(char key) {
+void xs_key_handler(char key) {
     switch (key) {
         // w, d, s, a for setting snake position
         // if statements prevent the snake from flipping directions
@@ -76,11 +75,6 @@ void xa_key_handler(char key) {
     }
 }
 
-void game_over() {
-    draw_string(GAME_OVER, center_x(string_len(GAME_OVER) * 8, vbe_info->width), 200, 0xb000);
-    wait(1000);
-}
-
 // see if snake hit itself
 int check_overlap() {
     struct snake_node *ptr = snake.next;
@@ -93,14 +87,14 @@ int check_overlap() {
     return 0;
 }
 
-int xa_main() {
-    draw_background(XA_MAIN_COLOR);
-    draw_string(TITLE, center_x(string_len(TITLE) * 8, vbe_info->width), 50, XA_HIGHLIGHT_2);
-    draw_string(SUBTITLE, center_x(string_len(SUBTITLE) * 8, vbe_info->width), 70, XA_HIGHLIGHT_1);
-    draw_string(LOADING, center_x(string_len(LOADING) * 8, vbe_info->width), 200, XA_HIGHLIGHT_1);
-    draw_line(70, 0, 70, vbe_info->height, XA_SECOND_COLOR, 20);
-    draw_line(vbe_info->width - 70 - 20, 0, vbe_info->width - 70 - 20, vbe_info->height, XA_SECOND_COLOR, 20);
-    key_down_handler = xa_key_handler;
+int xs_main() {
+    draw_background(XS_MAIN_COLOR);
+    draw_string(TITLE, center_x(string_len(TITLE) * 8, vbe_info->width), 50, XS_HIGHLIGHT_2);
+    draw_string(SUBTITLE, center_x(string_len(SUBTITLE) * 8, vbe_info->width), 70, XS_HIGHLIGHT_1);
+    draw_string(LOADING, center_x(string_len(LOADING) * 8, vbe_info->width), 200, XS_HIGHLIGHT_1);
+    draw_line(70, 0, 70, vbe_info->height, XS_SECOND_COLOR, 20);
+    draw_line(vbe_info->width - 70 - 20, 0, vbe_info->width - 70 - 20, vbe_info->height, XS_SECOND_COLOR, 20);
+    key_down_handler = xs_key_handler;
     snake.x = 0;
     snake.y = 0;
     direction = 1;
@@ -139,7 +133,8 @@ int xa_main() {
                 break;
         }
         if (vbe_info->width < snake.x + MOVE_AMOUNT || snake.x < 0 || vbe_info->height < snake.y + MOVE_AMOUNT || snake.y < 0 || exit_flag || check_overlap()) {
-            game_over();
+            draw_string(GAME_OVER, center_x(string_len(GAME_OVER) * 8, vbe_info->width), 200, 0xb000);
+            play_song("snake_lose");
             ptr = snake.next; // free all segments from tail to head
             while (ptr != &snake) {
                 free(ptr);
@@ -151,7 +146,7 @@ int xa_main() {
             return 1;
         }
         if (snake.x == fruit.x * MOVE_AMOUNT && snake.y == fruit.y * MOVE_AMOUNT) {
-            beep(200, 200, 0);
+            beep(200, 100, 0);
             fruit.x = max_rand(vbe_info->width / MOVE_AMOUNT - 1); // will multiply by 32 later, but this is needed to ensure the fruit is aligned
             fruit.y = max_rand(vbe_info->height / MOVE_AMOUNT - 1); // will multiply by 32 later, but this is needed to ensure the fruit is aligned
             // allocate new tail

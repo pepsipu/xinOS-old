@@ -1,4 +1,5 @@
 #include <games/XinSnake/xa_main.c>
+#include <games/XinMusic/xm_main.c>
 
 struct game {
     char *name;
@@ -7,6 +8,6 @@ struct game {
 };
 
 struct game games[] = {
-        {.name = "xinSnake", .author = "pepsipu", .init = xa_main},
-        {.name = "xinMusic", .author = "pepsipu", .init = 0}
+        {.name = "xinSnake", .author = "pepsipu", .init = xs_main},
+        {.name = "xinMusic", .author = "pepsipu", .init = xm_main}
 };
