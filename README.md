@@ -1,5 +1,14 @@
-# xinOS
-xinOS is a operating system. It uses 16 bit color graphics and emulates the way NES games were played. By default, there are 2 applications loaded on it (xinSnake and xinMusic), but you can write your own in C and play them!
+# xinOS: XIN isn't NES!
+
+##### Main Menu
+
+
+![Main Menu](https://i.imgur.com/mgvcyMW.png "Main Menu")
+
+xinOS is a operating system to bring back the days of the NES. Utilizing 16 bit color graphics and the PC beep speaker for audion, it emulates the way NES games were played. You can load images, draw geometric shapes, and all sorts of complex features are available for xinOS. By default, there are 2 applications loaded on it (xinSnake and xinMusic), but you can write your own games in C and play them!
+
+##### Snake
+![Snake](https://i.imgur.com/tQgdJs6.png "Snake")
 
 ## How do I run it?
 First off, download the xinOS image from the "releases" tab on GitHub. This is the actual image that the operating system is on

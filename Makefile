@@ -1,5 +1,7 @@
 all: setup bootloader kernel image
 
+GAME_LIBS=$(wildcard src/games/*.a)
+
 BUILD_DIR=build
 OS_IMG=xinos.img
 
@@ -17,7 +19,7 @@ kernel:
 	# compile an object file of the kernel assuming a standard library won't be available
 	gcc -ffreestanding -c src/kernel/kernel.c -I src -o $(BUILD_DIR)/kernel/kernel.o -m32 -fno-pic -no-pie -g -mgeneral-regs-only -mno-red-zone -fno-stack-protector
 	# link the kernel relative to 0x7f00 (we will load it at this address) as an elf, for debugging
-	ld -o $(BUILD_DIR)/kernel/kernel.elf -T src/kernel/kernel.lds $(BUILD_DIR)/kernel/kernel.o -melf_i386
+	ld -o $(BUILD_DIR)/kernel/kernel.elf -T src/kernel/kernel.lds $(BUILD_DIR)/kernel/kernel.o $(GAME_LIBS) -melf_i386
 	# create raw binary file of kernel
 	objcopy -O binary $(BUILD_DIR)/kernel/kernel.elf $(BUILD_DIR)/kernel/kernel.bin
 
