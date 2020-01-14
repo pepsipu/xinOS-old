@@ -17,19 +17,21 @@ struct song_entry {
     uint32_t song_length;
     struct beep *frequencies;
 } songs[] = {
+        /*
     {
         .frequencies = mario,
         .song_name = "mario",
         .porter = "pepsipu",
         .song_length = sizeof(mario) / sizeof(struct beep)
     },
+         */
     {
         .frequencies = russia,
         .song_name = "russian anthem",
         .porter = "ararouge",
         .song_length = sizeof(russia) / sizeof(struct beep)
     },
-    {
+    /*{
         .frequencies = axel,
         .song_name = "axel f",
         .porter = "ararouge",
@@ -46,7 +48,7 @@ struct song_entry {
         .song_name = "christmas",
         .porter = "ararouge",
         .song_length = sizeof(merry_christmas) / sizeof(struct beep)
-    },
+    },*/
     {
         .frequencies = lose,
         .song_name = "snake_lose",
