@@ -30,4 +30,6 @@ If you are running Bochs, a config is premade for you.
 ## I'd like to design some games for xinOS!
 Awesome! xinOS provides a friendly interface for drawing pixels, squares, triangles, circles, and other geometric shapes (as well as text) onto the screen, as well as an interface for IO tasks, keyboards, and other tasks. You don't need to know a single thing about operating systems to write a game for xinOS. Though, you should know C.
 
-As of now, there is no official documentation for making games. Right now, you should go look at the snake game as a reference, which is heavily commented. If you'd like to see fully fledged documentation, please star this project! I don't want to make documentation no one will use, so starring lets me know people want documentation to make games.
+~~As of now, there is no official documentation for making games. Right now, you should go look at the snake game as a reference, which is heavily commented. If you'd like to see fully fledged documentation, please star this project! I don't want to make documentation no one will use, so starring lets me know people want documentation to make games.~~
+
+After some attention from the OSDev subreddit, I've decided to start working on the Wiki page for this operating system! It's currently under development, but given some time it will finish. You can find a link to the wiki [here.](https://github.com/pepsipu/xinOS/wiki)
