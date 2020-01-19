@@ -10,9 +10,6 @@
 ;[org 0x7c00] remove org directive since linker script will handle this
 [bits 16]
 
-%define KERNEL_SECTORS 255
-%define MEM_PER_SECTORS 128 * 512
-
 %define VESA_MODE 0x0111
 
 %define DISK 0x13
@@ -23,36 +20,6 @@
     call print_si
 %endmacro
 
-%macro load_kernel 0
-    mov ax, 0xffff ; base address will be 0xfffff
-    mov es, ax ; set segment
-    %assign i 0
-    %assign remainder KERNEL_SECTORS % 128
-    %assign iterations ((KERNEL_SECTORS - remainder) / 128) - 1 ; loop as many times as possible for 128 sectors
-    %rep iterations
-    %assign current_mem 0x10 + (i * MEM_PER_SECTORS)
-    mov bx, current_mem ; kernel location = es:bx = 0x100000
-    mov ah, 0x2 ; (bios) read a sector mode
-    mov al, 128 ; read as many sectors as needed
-    mov ch, 0 ; ch = cylinder 0, cl = sector 3
-    %assign current_sector 3 + (128 * i)
-    mov cl, current_sector
-    mov dh, 0x0 ; head 0
-    int DISK ; call bios to handle disk operation
-    jc disk_fail ; if the carry flag is set (something went wrong) hang
-    %assign i i + 1
-    %endrep
-    %assign current_mem 0x10 + (i * MEM_PER_SECTORS)
-    mov bx, current_mem ; kernel location = es:bx = 0x100000
-    mov ah, 0x2 ; (bios) read a sector mode
-    mov al, remainder ; read as many sectors as needed
-    mov ch, 0 ; ch = cylinder 0, cl = sector 3
-    %assign current_sector 3 + (128 * i)
-    mov cl, current_sector
-    mov dh, 0x0 ; head 0
-    int DISK ; call bios to handle disk operation
-    jc disk_fail ; if the carry flag is set (something went wrong) hang
-%endmacro
 ; BOOTLOADER - 512 bytes - sector 1
 start:
     ; don't modify stack pointer and base pointer, on boot, bp = 0, and sp = to some value in between 0x7c00 (under bootloader) and 0x500 (above bios data)
@@ -63,7 +30,7 @@ start:
     ; print confirmation that we have booted
     print ok
 
-    ; read strings/data from disk to memory right above bootloader
+    ; read strings/data from disk to memory right above bootloader using CHS addressing
     mov bx, 0x7e00 ; data/strings location
     mov ah, 0x2 ; (bios) read a sector mode
     mov al, 0x1 ; read 1 sector
@@ -72,21 +39,29 @@ start:
     int DISK ; call bios to handle disk operation
     jc disk_fail ; if the carry flag is set (something went wrong) hang
 
-    ; read kernel from disk into memory above strings/data
-    %if 0
-    mov ax, 0xffff
-    mov es, ax
-    mov bx, 0x10 ; kernel location = es:bx = 0x100000
-    mov ah, 0x2 ; (bios) read a sector mode
-    mov al, KERNEL_SECTORS ; read as many sectors as needed
-    mov cx, 0x3 ; ch = cylinder 0, cl = sector 3
-    mov dh, 0x0 ; head 0
-    int DISK ; call bios to handle disk operation
-    jc disk_fail ; if the carry flag is set (something went wrong) hang
-    ; print messages
-    %endif
+    print strings
 
-    load_kernel
+    ; obtain drive geometry
+    mov ah, 0x8 ; (bios) drive geometry
+    mov dl, 0 ; floppy 0
+    int DISK
+    and cl, 0x3f ; get sectors per track
+    ;sub dh ; dh contains heads - 1
+    ; store drive geometry
+    mov [sectors_per_track], cl
+    mov [heads], dh - 1
+
+    mov ax, 0x820
+    mov es, ax
+
+    ; load in 128 (whatever is in di + 1) sector chunks.
+    mov ax, 2
+    xor si, si
+    mov di, 127
+    call load_sector
+
+    mov ax, 0x1062
+    mov es, ax
 
     xor ax, ax
     mov es, ax
@@ -163,11 +138,45 @@ vesa_search_mode:
     add si, 2
     jmp vesa_search_mode
 
+load_sector:
+    push ax
+    xor dx, dx
+
+    mov bx, [sectors_per_track] ; get sectors per track
+    div bx ; ax / bx
+    inc dx
+    push dx ; save sectors
+
+    xor dx, dx
+    mov bx, [heads]
+    div bx ; remainder (dx) is heads
+
+    pop cx ; sectors are on the stack
+    mov ch, al ; move cylinder into ch
+
+
+    mov ah, 0x2 ; (bios) load sector
+    mov al, 0x1 ; read 1 sector
+    mov dl, 0 ; floppy 0
+    mov bx, si
+    int DISK
+    jc disk_fail
+
+    pop ax
+    cmp di, 0
+    je pure_ret
+    dec di
+
+    inc ax
+    add si, 512
+
+    jmp load_sector
+
 [bits 32]
 start_protected:
 
     ; setup stack
-    mov esp, 0x9fc00 ; stack grows down, giving ~600kb of stack space (heap grows up from 0x7f00, though collision is unlikely)
+    mov esp, 0x7c00 ; stack grows down, giving ~600kb of stack space (heap grows up from 0x7f00, though collision is unlikely)
     mov ebp, esp ; set stack base at it's start
 
     ; every other segment register besides the cs register will use the data segment we defined in the GDT
@@ -178,12 +187,15 @@ start_protected:
     mov fs, ax
     mov ss, ax
 
-    call 0x100000 ; call the location the kernel was loaded to
+    call 0x8200 ; call the location the kernel was loaded to
 
     jmp $
 
 ok db "xin_ok", 0 ; small confirmation message so we know the bootloader worked
 bad_disk db "disk_bad", 0 ; small message to display in the case that we could not load data from the disk
+strings db "strings", 0
+first db "first sector", 0
+second db "second sector"
 times 510-($-$$) db 0 ; pad rest of 510 bytes with 0s
 dw 0xaa55 ; bytes 511 and 512 need to be boot signature
 
@@ -195,8 +207,8 @@ gdt_okay db "Loaded the GDT.", 0
 protected_okay db "Switching from 16-bit real mode to 32-bit protected mode.", 0
 graphics db "Your video configurations are not supported.", 0
 
-; 114 bytes used so far
-
+heads db 0
+sectors_per_track db 0
 ; global descriptor table
 ; it tends to be super weird and fragmented, but i'll try to comment as much as possible
 ; there are 4 entries, the first 2 entries is code/data for 32 bit, the second 2 entries are for code/data in 16 bit

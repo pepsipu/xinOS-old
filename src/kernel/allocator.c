@@ -1,7 +1,7 @@
 #ifndef ALLOC
 #define ALLOC
 
-#define HEAP_START 0x8200 // begin heap right above where kernel is loaded
+#define HEAP_START 0x500 // begin heap right above where kernel is loaded
 
 #include <stdint.h>
 #include <glob.h>
