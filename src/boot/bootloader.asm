@@ -36,35 +36,45 @@ start:
     mov al, 0x1 ; read 1 sector
     mov cx, 0x2 ; ch = cylinder 0, cl = sector 2
     mov dh, 0x0 ; head 0
+    mov dl, 0x80 ; hard drive 0
     int DISK ; call bios to handle disk operation
     jc disk_fail ; if the carry flag is set (something went wrong) hang
 
     print strings
 
-    ; obtain drive geometry
-    mov ah, 0x8 ; (bios) drive geometry
-    mov dl, 0 ; floppy 0
+; below is a way to obtain drive geometry, which is unneeded for loading with LDA
+;    ; obtain drive geometry
+;    mov ah, 0x8 ; (bios) drive geometry
+;    mov dl, 0 ; floppy 0
+;    int DISK
+;    and cl, 0x3f ; get sectors per track
+;    ;sub dh ; dh contains heads - 1
+;    ; store drive geometry
+;    mov [sectors_per_track], cl
+;    mov [heads], dh - 1
+
+    ; detect if LDA is available
+    mov ah, 0x41 ; (bios) ensure lda
+    mov bx, 0x55aa ; signature
+    mov dl, 0x80 ; drive 0
     int DISK
-    and cl, 0x3f ; get sectors per track
-    ;sub dh ; dh contains heads - 1
-    ; store drive geometry
-    mov [sectors_per_track], cl
-    mov [heads], dh - 1
-
-    mov ax, 0x820
-    mov es, ax
-
-    ; load in 128 (whatever is in di + 1) sector chunks.
-    mov ax, 2
-    xor si, si
-    mov di, 127
-    call load_sector
-
-    mov ax, 0x1062
-    mov es, ax
+    jc lda_bad ; err if carry is set
 
     xor ax, ax
-    mov es, ax
+    mov ds, ax
+
+    mov ah, 0x42 ; (bios) read via LDA
+    mov dl, 0x80 ; drive 0
+    mov si, lda_packet
+    int DISK
+    jc disk_fail
+
+
+    mov ah, 0x42 ; (bios) read via LDA
+    mov dl, 0x80 ; drive 0
+    mov si, lda_packet
+    int DISK
+    jc disk_fail
 
     print load ; just a helpful message
     print disk_okay ; since we could load the strings, we know disk is fine
@@ -125,6 +135,10 @@ disk_fail:
     print bad_disk
     jmp hang
 
+lda_bad:
+    print no_lda
+    jmp hang
+
 vesa_fail:
     print graphics
     jmp no_set
@@ -138,39 +152,39 @@ vesa_search_mode:
     add si, 2
     jmp vesa_search_mode
 
-load_sector:
-    push ax
-    xor dx, dx
-
-    mov bx, [sectors_per_track] ; get sectors per track
-    div bx ; ax / bx
-    inc dx
-    push dx ; save sectors
-
-    xor dx, dx
-    mov bx, [heads]
-    div bx ; remainder (dx) is heads
-
-    pop cx ; sectors are on the stack
-    mov ch, al ; move cylinder into ch
-
-
-    mov ah, 0x2 ; (bios) load sector
-    mov al, 0x1 ; read 1 sector
-    mov dl, 0 ; floppy 0
-    mov bx, si
-    int DISK
-    jc disk_fail
-
-    pop ax
-    cmp di, 0
-    je pure_ret
-    dec di
-
-    inc ax
-    add si, 512
-
-    jmp load_sector
+;load_sector:
+;    push ax
+;    xor dx, dx
+;
+;    mov bx, [sectors_per_track] ; get sectors per track
+;    div bx ; ax / bx
+;    inc dx
+;    push dx ; save sectors
+;
+;    xor dx, dx
+;    mov bx, [heads]
+;    div bx ; remainder (dx) is heads
+;
+;    pop cx ; sectors are on the stack
+;    mov ch, al ; move cylinder into ch
+;
+;
+;    mov ah, 0x2 ; (bios) load sector
+;    mov al, 0x1 ; read 1 sector
+;    mov dl, 0 ; floppy 0
+;    mov bx, si
+;    int DISK
+;    jc disk_fail
+;
+;    pop ax
+;    cmp di, 0
+;    je pure_ret
+;    dec di
+;
+;    inc ax
+;    add si, 512
+;
+;    jmp load_sector
 
 [bits 32]
 start_protected:
@@ -203,12 +217,25 @@ dw 0xaa55 ; bytes 511 and 512 need to be boot signature
 sector_2:
 load db "Loading xinOS...", 0
 disk_okay db "Disk operations are functional.", 0
+no_lda db "Your PC does not support loading data from hard drives through LDA.", 0
 gdt_okay db "Loaded the GDT.", 0
 protected_okay db "Switching from 16-bit real mode to 32-bit protected mode.", 0
 graphics db "Your video configurations are not supported.", 0
 
-heads db 0
-sectors_per_track db 0
+; heads db 0
+; sectors_per_track db 0
+
+; lda packet
+align 4
+lda_packet:
+    db 0x10 ; size of LDA packet, which is 16 bytes
+    db 0 ; required
+    dw 127 ; sectors to transfer
+    dw 0x8200 ; transfer buffer location
+    dw 0x0 ; offset, which is 0
+    dq 2 ; start reading including 3rd sector
+
+
 ; global descriptor table
 ; it tends to be super weird and fragmented, but i'll try to comment as much as possible
 ; there are 4 entries, the first 2 entries is code/data for 32 bit, the second 2 entries are for code/data in 16 bit
