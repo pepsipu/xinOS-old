@@ -151,6 +151,15 @@ void (*key_down_handler)(char) = null_handler;
 
 void (*key_up_handler)(char) = null_handler;
 
+void set_key_down_handler(void (*handler)(char)) {
+    key_down_handler = handler;
+}
+
+void set_key_up_handler(void (*handler)(char)) {
+    key_up_handler = handler;
+}
+
+
 #define MOD_NONE  0
 #define MOD_CTRL  (1 << 0)
 #define MOD_SHIFT (1 << 1)
