@@ -111,8 +111,18 @@ dw 0xaa55 ; bytes 511 and 512 need to be boot signature
 
 ; STAGE TWO - 3.5k bytes - sector 2-8
 stage_two_bootloader:
+    print load
+    mov sp, 0x7c00
+    call a20_test
+    cmp ax, 1
+    je a20_success
+
     hlt
-    jmp stage_two_bootloader
+a20_success:
+    print a20_enabled
+.loop
+    hlt
+    jmp .loop
 
 ; detect if LDA is available
     mov ah, 0x41 ; (bios) ensure lda
@@ -171,6 +181,35 @@ stage_two_bootloader:
     mov cr0, esi ; flag is now set, we go from 16 bit real mode to 32 bit protected mode
     jmp CODE_SEGMENT:start_protected ; make a far jump to flush the CPU pipeline so we don't keep executing 16 bit code
 
+; AX is 0 if the A20 line is disabled, 1 otherwise
+; https://wiki.osdev.org/A20_Line#Testing_the_A20_line
+a20_test:
+    xor ax, ax
+    mov es, ax
+    not ax
+    mov fs, ax
+
+    ; The addresses to be tested
+    mov si, 0x7DFE
+    mov di, 0x7E0E
+
+    ; Check the values
+    mov ax, word [es:si]
+    cmp word [fs:di], ax
+    jne .success
+
+    ; Check that the values being exact wasn't a fluke
+    rol ax, 4
+    mov word [es:si], ax
+    cmp word [fs:di], ax
+    jne .success
+
+    xor ax, ax ; ax = 0
+    ret
+.success:
+    mov ax, 1
+    ret
+
 lda_bad:
     print no_lda
     jmp hang
@@ -209,6 +248,7 @@ start_protected:
 
 strings:
 load db "Loading xinOS...", 0
+a20_enabled db "A20 line enabled.", 0
 disk_okay db "Disk operations are functional.", 0
 no_lda db "Your PC does not support loading data from hard drives through LDA.", 0
 gdt_okay db "Loaded the GDT.", 0
