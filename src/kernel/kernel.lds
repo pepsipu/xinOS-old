@@ -1,5 +1,5 @@
 SECTIONS {
-    . = 0x8200;
+    . = 1M;
     kernel_entry : { *(kernel_entry) }
     .data : { *(.data) }
     .text : { *(.text) }

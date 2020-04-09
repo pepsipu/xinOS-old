@@ -8,7 +8,6 @@
 ;***************************************************************************
 
 ;[org 0x7c00] remove org directive since linker script will handle this
-[bits 16]
 
 %define VESA_MODE 0x0111
 
@@ -20,8 +19,9 @@
     call print_si
 %endmacro
 
-; BOOTLOADER - 512 bytes - sector 1
-start:
+; STAGE ONE - 512 bytes - sector 1
+[bits 16]
+stage_one_start:
     ; don't modify stack pointer and base pointer, on boot, bp = 0, and sp = to some value in between 0x7c00 (under bootloader) and 0x500 (above bios data)
 
     xor ax, ax
@@ -33,27 +33,88 @@ start:
     ; read strings/data from disk to memory right above bootloader using CHS addressing
     mov bx, 0x7e00 ; data/strings location
     mov ah, 0x2 ; (bios) read a sector mode
-    mov al, 0x1 ; read 1 sector
+    mov al, 0x7 ; read 7 sectors
     mov cx, 0x2 ; ch = cylinder 0, cl = sector 2
     mov dh, 0x0 ; head 0
     mov dl, 0x80 ; hard drive 0
     int DISK ; call bios to handle disk operation
     jc disk_fail ; if the carry flag is set (something went wrong) hang
 
-    print strings
+    ; Print that we have successfully loaded the second stage
+    print stage_two_loaded
+    jmp stage_two_bootloader
 
-; below is a way to obtain drive geometry, which is unneeded for loading with LDA
-;    ; obtain drive geometry
-;    mov ah, 0x8 ; (bios) drive geometry
+print_si:
+    mov ah, 0x0e ; (bios) teletype mode
+    .loop:
+    lodsb ; load byte from si into al and inc si
+    test al, al ; check if al is a null byte
+    jz .ret ; if it is return
+    int DISPLAY ; if not print
+    jmp .loop ; then go back to loading another byte
+    .ret:
+    mov al, 0xa ; newline
+    int DISPLAY
+    mov al, 0xd ; carriage return
+    int DISPLAY
+    pure_ret:
+    ret
+
+hang:
+    cli ; clear interrupt flag
+    hlt ; halt the cpu
+    jmp hang ; if for some reason we resume (likely due to an interrupt we cannot block), jump back to the hang sequence
+
+disk_fail:
+    print bad_disk
+    jmp hang
+
+;load_sector:
+;    push ax
+;    xor dx, dx
+;
+;    mov bx, [sectors_per_track] ; get sectors per track
+;    div bx ; ax / bx
+;    inc dx
+;    push dx ; save sectors
+;
+;    xor dx, dx
+;    mov bx, [heads]
+;    div bx ; remainder (dx) is heads
+;
+;    pop cx ; sectors are on the stack
+;    mov ch, al ; move cylinder into ch
+;
+;
+;    mov ah, 0x2 ; (bios) load sector
+;    mov al, 0x1 ; read 1 sector
 ;    mov dl, 0 ; floppy 0
+;    mov bx, si
 ;    int DISK
-;    and cl, 0x3f ; get sectors per track
-;    ;sub dh ; dh contains heads - 1
-;    ; store drive geometry
-;    mov [sectors_per_track], cl
-;    mov [heads], dh - 1
+;    jc disk_fail
+;
+;    pop ax
+;    cmp di, 0
+;    je pure_ret
+;    dec di
+;
+;    inc ax
+;    add si, 512
+;
+;    jmp load_sector
 
-    ; detect if LDA is available
+ok db "Bootloader stage one okay", 0
+stage_two_loaded db "Stage two loaded", 0
+bad_disk db "Unable to read from disk", 0 ; message to display in the case that we could not load data from the disk
+times 510-($-$$) db 0 ; pad rest of 510 bytes with 0s
+dw 0xaa55 ; bytes 511 and 512 need to be boot signature
+
+; STAGE TWO - 3.5k bytes - sector 2-8
+stage_two_bootloader:
+    hlt
+    jmp stage_two_bootloader
+
+; detect if LDA is available
     mov ah, 0x41 ; (bios) ensure lda
     mov bx, 0x55aa ; signature
     mov dl, 0x80 ; drive 0
@@ -110,31 +171,6 @@ start:
     mov cr0, esi ; flag is now set, we go from 16 bit real mode to 32 bit protected mode
     jmp CODE_SEGMENT:start_protected ; make a far jump to flush the CPU pipeline so we don't keep executing 16 bit code
 
-print_si:
-    mov ah, 0x0e ; (bios) teletype mode
-    .loop:
-    lodsb ; load byte from si into al and inc si
-    test al, al ; check if al is a null byte
-    jz .ret ; if it is return
-    int DISPLAY ; if not print
-    jmp .loop ; then go back to loading another byte
-    .ret:
-    mov al, 0xa ; newline
-    int DISPLAY
-    mov al, 0xd ; carriage return
-    int DISPLAY
-    pure_ret:
-    ret
-
-hang:
-    cli ; clear interrupt flag
-    hlt ; halt the cpu
-    jmp hang ; if for some reason we resume (likely due to an interrupt we cannot block), jump back to the hang sequence
-
-disk_fail:
-    print bad_disk
-    jmp hang
-
 lda_bad:
     print no_lda
     jmp hang
@@ -151,40 +187,6 @@ vesa_search_mode:
     je pure_ret
     add si, 2
     jmp vesa_search_mode
-
-;load_sector:
-;    push ax
-;    xor dx, dx
-;
-;    mov bx, [sectors_per_track] ; get sectors per track
-;    div bx ; ax / bx
-;    inc dx
-;    push dx ; save sectors
-;
-;    xor dx, dx
-;    mov bx, [heads]
-;    div bx ; remainder (dx) is heads
-;
-;    pop cx ; sectors are on the stack
-;    mov ch, al ; move cylinder into ch
-;
-;
-;    mov ah, 0x2 ; (bios) load sector
-;    mov al, 0x1 ; read 1 sector
-;    mov dl, 0 ; floppy 0
-;    mov bx, si
-;    int DISK
-;    jc disk_fail
-;
-;    pop ax
-;    cmp di, 0
-;    je pure_ret
-;    dec di
-;
-;    inc ax
-;    add si, 512
-;
-;    jmp load_sector
 
 [bits 32]
 start_protected:
@@ -205,16 +207,7 @@ start_protected:
 
     jmp $
 
-ok db "xin_ok", 0 ; small confirmation message so we know the bootloader worked
-bad_disk db "disk_bad", 0 ; small message to display in the case that we could not load data from the disk
-strings db "strings", 0
-first db "first sector", 0
-second db "second sector"
-times 510-($-$$) db 0 ; pad rest of 510 bytes with 0s
-dw 0xaa55 ; bytes 511 and 512 need to be boot signature
-
-; STRINGS/DATA FOR BOOTLOADER - 512 bytes - sector 2
-sector_2:
+strings:
 load db "Loading xinOS...", 0
 disk_okay db "Disk operations are functional.", 0
 no_lda db "Your PC does not support loading data from hard drives through LDA.", 0
