@@ -33,7 +33,7 @@ stage_one_start:
     ; read strings/data from disk to memory right above bootloader using CHS addressing
     mov bx, 0x7e00 ; data/strings location
     mov ah, 0x2 ; (bios) read a sector mode
-    mov al, 0x7 ; read 7 sectors
+    mov al, 0x15 ; read 15 sectors (7.5k)
     mov cx, 0x2 ; ch = cylinder 0, cl = sector 2
     mov dh, 0x0 ; head 0
     mov dl, 0x80 ; hard drive 0
@@ -103,13 +103,13 @@ disk_fail:
 ;
 ;    jmp load_sector
 
-ok db "Bootloader stage one okay", 0
-stage_two_loaded db "Stage two loaded", 0
+ok db "Bootloader stage one okay.", 0
+stage_two_loaded db "Stage two loaded.", 0
 bad_disk db "Unable to read from disk", 0 ; message to display in the case that we could not load data from the disk
 times 510-($-$$) db 0 ; pad rest of 510 bytes with 0s
 dw 0xaa55 ; bytes 511 and 512 need to be boot signature
 
-; STAGE TWO - 3.5k bytes - sector 2-8
+; STAGE TWO - 7.5k bytes - sector 2-16
 stage_two_bootloader:
     print load
     mov sp, 0x7c00
@@ -117,10 +117,76 @@ stage_two_bootloader:
     cmp ax, 1
     je a20_success
 
-    hlt
+.int15_method:
+    mov ax, 0x2403
+    int 0x15
+    jb .keyboard_controller_method
+    cmp ah, 0
+    jnz .keyboard_controller_method
+
+    mov ax, 0x2402
+    int 0x15
+    jb .keyboard_controller_method
+    cmp ah, 0
+    jnz .keyboard_controller_method
+
+    mov ax, 0x2401
+    int 0x15
+    jb .keyboard_controller_method
+    cmp ah, 0
+    jnz .keyboard_controller_method
+
+    call a20_test
+    cmp ax, 1
+    je a20_success
+
+.keyboard_controller_method:
+    call keyboard_wait
+    mov al,0xAD
+    out 0x64,al
+
+    call keyboard_wait
+    mov al,0xD0
+    out 0x64,al
+
+    call keyboard_wait.other
+    in al,0x60
+    push eax
+
+    call keyboard_wait
+    mov al,0xD1
+    out 0x64,al
+
+    call keyboard_wait
+    pop eax
+    or al,2
+    out 0x60,al
+
+    call keyboard_wait
+    mov al,0xAE
+    out 0x64,al
+
+    call keyboard_wait
+
+    call a20_test
+    cmp ax, 1
+    je a20_success
+
+.fast_a20_method:
+    xor cx, cx
+    in al, 0x92
+    or al, 2
+    and al, 0xFE
+    out 0x92, al
+
+    call a20_test
+    cmp ax, 1
+    je a20_success
+    jmp a20_fail
+
 a20_success:
     print a20_enabled
-.loop
+.loop:
     hlt
     jmp .loop
 
@@ -210,6 +276,21 @@ a20_test:
     mov ax, 1
     ret
 
+keyboard_wait:
+    in al, 0x64
+    test al, 2
+    jnz keyboard_wait
+    ret
+.other:
+    in al, 0x64
+    test al, 1
+    jz .other
+    ret
+
+a20_fail:
+    print a20_not_enabled
+    jmp hang
+
 lda_bad:
     print no_lda
     jmp hang
@@ -249,6 +330,7 @@ start_protected:
 strings:
 load db "Loading xinOS...", 0
 a20_enabled db "A20 line enabled.", 0
+a20_not_enabled db "Your PC does not support enabling the A20 line.", 0
 disk_okay db "Disk operations are functional.", 0
 no_lda db "Your PC does not support loading data from hard drives through LDA.", 0
 gdt_okay db "Loaded the GDT.", 0

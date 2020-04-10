@@ -27,10 +27,10 @@ kernel:
 image:
 	# create a blank image 512kb large
 	dd if=/dev/zero of=$(BUILD_DIR)/$(OS_IMG) bs=1024 count=512
-	# write bootloader stages and it's strings/data to first 4096 bytes (4kb)
-	dd conv=notrunc if=$(BUILD_DIR)/bootloader/bootloader.bin of=$(BUILD_DIR)/$(OS_IMG) bs=512 count=8 seek=0
+	# write bootloader stages and it's strings/data to first 8192 bytes (8kb)
+	dd conv=notrunc if=$(BUILD_DIR)/bootloader/bootloader.bin of=$(BUILD_DIR)/$(OS_IMG) bs=512 count=16 seek=0
 	# write kernel to the rest of image (arb size)
-	dd conv=notrunc if=$(BUILD_DIR)/kernel/kernel.bin of=$(BUILD_DIR)/$(OS_IMG) bs=512 seek=8
+	dd conv=notrunc if=$(BUILD_DIR)/kernel/kernel.bin of=$(BUILD_DIR)/$(OS_IMG) bs=512 seek=16
 
 clean:
 	rm -r build
