@@ -24,8 +24,14 @@
 stage_one_start:
     ; don't modify stack pointer and base pointer, on boot, bp = 0, and sp = to some value in between 0x7c00 (under bootloader) and 0x500 (above bios data)
 
+    ; clear out all registers
     xor ax, ax
-    mov es, ax ; clear out segment register
+    mov ds, ax
+    mov es, ax
+    mov ss, ax
+    mov fs, ax
+    mov gs, ax
+    mov sp, 0x7c00
 
     ; print confirmation that we have booted
     print ok
@@ -36,7 +42,7 @@ stage_one_start:
     mov al, 0x15 ; read 15 sectors (7.5k)
     mov cx, 0x2 ; ch = cylinder 0, cl = sector 2
     mov dh, 0x0 ; head 0
-    mov dl, 0x80 ; hard drive 0
+    ; dl is set to correct drive number
     int DISK ; call bios to handle disk operation
     jc disk_fail ; if the carry flag is set (something went wrong) hang
 
@@ -57,7 +63,6 @@ print_si:
     int DISPLAY
     mov al, 0xd ; carriage return
     int DISPLAY
-    pure_ret:
     ret
 
 hang:
@@ -186,26 +191,47 @@ stage_two_bootloader:
 
 a20_success:
     print a20_enabled
+
+enter_protected_mode:
+    cli ; disable interrupts because when we switch we do not want the BIOS handling our interrupts
+    ; push real mode segments onto the stack
+    push ds
+    push es
+
+    lgdt [gdt_descriptor] ; set addr of gdt descriptor so the cpu knows where our GDT is at
+    print gdt_okay
+
+    mov eax, cr0
+    or al, 1 ; enable protected mode
+    mov cr0, eax
+
+    jmp protected_mode ; prevent crash
+
+protected_mode:
+    mov bx, 0x10
+    ; set extra segments
+    mov ds, bx
+    mov es, bx
+
+    and al, 0xfe
+    mov cr0, eax
+
+unreal_mode:
+    pop es
+    pop ds
+    sti ; we enable interrupts again to be able to access BIOS functions
+    ; now in unreal mode
+
 .loop:
     hlt
     jmp .loop
 
-; detect if LDA is available
+    ; detect if LDA is available
     mov ah, 0x41 ; (bios) ensure lda
     mov bx, 0x55aa ; signature
     mov dl, 0x80 ; drive 0
     int DISK
     jc lda_bad ; err if carry is set
-
-    xor ax, ax
-    mov ds, ax
-
-    mov ah, 0x42 ; (bios) read via LDA
-    mov dl, 0x80 ; drive 0
-    mov si, lda_packet
-    int DISK
-    jc disk_fail
-
 
     mov ah, 0x42 ; (bios) read via LDA
     mov dl, 0x80 ; drive 0
@@ -304,9 +330,11 @@ vesa_search_mode:
     cmp ax, 0xffff ; end of list
     je vesa_fail ; hang if we reach end of the list
     cmp ax, VESA_MODE
-    je pure_ret
+    je .found_mode
     add si, 2
     jmp vesa_search_mode
+.found_mode:
+    ret
 
 [bits 32]
 start_protected:
@@ -385,30 +413,6 @@ gdt:
     db 10010010b ; first 4 bits is flags 1, last 4 bits is type descriptor
     db 11001111b ; first 4 bits is flags 2, last 4 bits is the last nibble of the size of the segment: f f f f [f]
     db 0x0 ; set highest byte of base address to 0: [00] 00 00 00.
-    .16bit_code_segment:
-    ; gdt data segment descriptor, for switching back to 16 bit real mode
-    ; size = f f f f f, base = 00 00 00 00
-    ; flags 1 = 1 (present in memory) 00 (ring permission 0) 1 (code/data)
-    ; flags 2 = 1 (multiply size by 4,000) 0 (16 bit) 0 (no 64 bit) 0 (avl bit, does nothing to hardware)
-    ; type descriptor = 0 (data) 0 (protect from lower rings from executing segment) 1 (readable) 0 (lock bit / is being accessed)
-    dw 0xffff ; the first 4 nibbles of the size of the segment: [f f f f] f
-    dw 0x0 ; the lowest 2 bytes of the base address: 00 00 [00 00]
-    db 0x0 ; the third lowest byte of the base address: 00 [00] 00 00
-    db 10010010b ; first 4 bits is flags 1, last 4 bits is type descriptor
-    db 10001111b ; first 4 bits is flags 2, last 4 bits is the last nibble of the size of the segment: f f f f [f]
-    db 0x0 ; set highest byte of base address to 0: [00] 00 00 00
-    .16bit_data_segment:
-    ; gdt data segment descriptor, for switching back to 16 bit real mode
-    ; size = f f f f f, base = 00 00 00 00
-    ; flags 1 = 1 (present in memory) 00 (ring permission 0) 1 (code/data)
-    ; flags 2 = 1 (multiply size by 4,000) 0 (16 bit) 0 (no 64 bit) 0 (avl bit, does nothing to hardware)
-    ; type descriptor = 0 (data) 0 (protect from lower rings from executing segment) 1 (readable) 0 (lock bit / is being accessed)
-    dw 0xffff ; the first 4 nibbles of the size of the segment: [f f f f] f
-    dw 0x0 ; the lowest 2 bytes of the base address: 00 00 [00 00]
-    db 0x0 ; the third lowest byte of the base address: 00 [00] 00 00
-    db 10010010b ; first 4 bits is flags 1, last 4 bits is type descriptor
-    db 10001111b ; first 4 bits is flags 2, last 4 bits is the last nibble of the size of the segment: f f f f [f]
-    db 0x0 ; set highest byte of base address to 0: [00] 00 00 00
 
 gdt_descriptor:
     dw gdt_descriptor - gdt - 1 ; size of gdt - 1
