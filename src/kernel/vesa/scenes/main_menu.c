@@ -90,6 +90,7 @@ void key_press(char c) {
 }
 
 void load_main_menu() {
+    menu_start:
     key_down_handler = key_press;
     draw_background(MAIN_COLOR);
     draw_string(TITLE_MSG, center_x(string_len(TITLE_MSG) * 8, vbe_info->width), 20, HIGHLIGHT_1);
@@ -119,6 +120,7 @@ void load_main_menu() {
                 action &= 0xfd; // disable launch game bit
                 if (GAMES_LENGTH - 1>= game_index + game_point) {
                     games[game_point + game_index].init();
+                    goto menu_start;
                 }
             }
         }

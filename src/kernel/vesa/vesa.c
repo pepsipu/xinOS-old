@@ -43,6 +43,6 @@ struct vbe_mode_info {
     uint8_t reserved1[206];
 } __attribute__ ((packed));
 
-struct vbe_mode_info *vbe_info = (struct vbe_mode_info *) 0x8000;
+struct vbe_mode_info *vbe_info = (struct vbe_mode_info *) 0x9000;
 
 #endif

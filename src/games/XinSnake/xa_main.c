@@ -142,7 +142,6 @@ int xs_main() {
             }
             snake.next = &snake;
             exit_flag = 0;
-            exit_to_main();
             return 1;
         }
         if (snake.x == fruit.x * MOVE_AMOUNT && snake.y == fruit.y * MOVE_AMOUNT) {

@@ -27,6 +27,5 @@ int xm_main() {
     draw_string(songs[song_index].porter, center_x(string_len(songs[song_index].porter) * 8, vbe_info->width), 80 + 40, XM_HIGHLIGHT_1);
     draw_string(RAND, center_x(string_len(RAND) * 8, vbe_info->width), vbe_info->height / 2, XM_HIGHLIGHT_1);
     play_song_by_index(song_index);
-    exit_to_main();
     return 0;
 }
