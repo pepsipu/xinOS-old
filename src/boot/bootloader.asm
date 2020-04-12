@@ -61,6 +61,7 @@ stage_one_start:
     jmp stage_two_bootloader
 
 print_si:
+    push eax
     mov ah, 0x0e ; (bios) teletype mode
     .loop:
     lodsb ; load byte from si into al and inc si
@@ -73,6 +74,7 @@ print_si:
     int DISPLAY
     mov al, 0xd ; carriage return
     int DISPLAY
+    pop eax
     ret
 
 hang:
@@ -231,6 +233,10 @@ unreal_mode:
     sti ; we enable interrupts again to be able to access BIOS functions
     ; now in unreal mode
 
+    mov bx, 0x0f01         ; attrib/char of smiley
+    mov eax, 0x0b8000      ; note 32 bit offset
+    mov word [ds:eax], bx
+
     ; detect if LDA is available
     mov ah, 0x41 ; (bios) ensure lda
     mov bx, 0x55aa ; signature
@@ -240,13 +246,14 @@ unreal_mode:
 
     mov ecx, 512
     mov edi, 0x100000
+    ;mov edi, 0x8500
 load_kernel_block:
     push ecx
     push edi
     ;xor ecx, ecx
 ;.lda_retry:
     mov ah, 0x42 ; (bios) read via LDA
-    mov si, lda_packet
+    lea si, [lda_packet]
     int DISK
     jc disk_fail
     
@@ -257,10 +264,16 @@ load_kernel_block:
 
 .continue:
     pop edi
-    mov ecx, 512 / 4 ; size of a sector divided by 4 bytes
+    mov ecx, 0
     movzx esi, word [lda_packet.buffer_address]
+.move_loop:
     ; Move buffer from esi to edi, ecx times
-    rep movsd
+    mov eax, [esi + ecx * 4]
+    mov [es:edi + ecx * 4], eax
+    inc ecx
+    cmp ecx, 512 / 4
+    jle .move_loop
+    add edi, 512
 
     ; Prepare for next loop
     mov eax, [lda_packet.sector_start]
@@ -272,15 +285,15 @@ load_kernel_block:
     jnz load_kernel_block
 
     ; vesa information is required in order to develop the graphical interface
-    mov di, 0x8000 ; load VESA informtion at 0x8000
+    mov di, 0x9000 ; load VESA informtion at 0x9000
     mov ax, 0x4f00 ; (bios) query VESA information
     int DISPLAY
 
-    mov si, word [0x8000 + 0xe] ; move offset of VESA modes into si
+    mov si, word [0x9000 + 0xe] ; move offset of VESA modes into si
     call vesa_search_mode ; will hang if mode is not found
     ; if we reach here, the mode has been found
 
-    mov di, 0x8000 ; write mode information here
+    mov di, 0x9000 ; write mode information here
     mov ax, 0x4f01 ; (bios) request mode information
     mov cx, VESA_MODE
     int DISPLAY
