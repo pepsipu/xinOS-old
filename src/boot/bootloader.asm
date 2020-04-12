@@ -22,8 +22,6 @@
 ; STAGE ONE - 512 bytes - sector 1
 [bits 16]
 stage_one_start:
-    ; don't modify stack pointer and base pointer, on boot, bp = 0, and sp = to some value in between 0x7c00 (under bootloader) and 0x500 (above bios data)
-
     ; clear out all registers
     xor ax, ax
     mov ds, ax
@@ -33,10 +31,15 @@ stage_one_start:
     mov gs, ax
     mov sp, 0x7c00
 
+    cld ; clear direction flag
+
     ; print confirmation that we have booted
     print ok
 
     ; read strings/data from disk to memory right above bootloader using CHS addressing
+    xor cx, cx
+.retry_loop:
+    push cx
     mov bx, 0x7e00 ; data/strings location
     mov ah, 0x2 ; (bios) read a sector mode
     mov al, 0x15 ; read 15 sectors (7.5k)
@@ -44,8 +47,15 @@ stage_one_start:
     mov dh, 0x0 ; head 0
     ; dl is set to correct drive number
     int DISK ; call bios to handle disk operation
-    jc disk_fail ; if the carry flag is set (something went wrong) hang
+    pop cx
+    jnc .disk_success ; if the carry flag is not set, jump to success
+    cmp cx, 2 ; check if this was our third try
+    je disk_fail ; if it was, hand
+    ; otherwise, try again
+    inc cx
+    jmp .retry_loop
 
+.disk_success:
     ; Print that we have successfully loaded the second stage
     print stage_two_loaded
     jmp stage_two_bootloader
@@ -199,7 +209,6 @@ enter_protected_mode:
     push es
 
     lgdt [gdt_descriptor] ; set addr of gdt descriptor so the cpu knows where our GDT is at
-    print gdt_okay
 
     mov eax, cr0
     or al, 1 ; enable protected mode
@@ -222,31 +231,45 @@ unreal_mode:
     sti ; we enable interrupts again to be able to access BIOS functions
     ; now in unreal mode
 
-.loop:
-    hlt
-    jmp .loop
-
     ; detect if LDA is available
     mov ah, 0x41 ; (bios) ensure lda
     mov bx, 0x55aa ; signature
-    mov dl, 0x80 ; drive 0
     int DISK
     jc lda_bad ; err if carry is set
+    print disk_okay ; since lda works, we know disk is fine
 
+    mov ecx, 512
+    mov edi, 0x100000
+load_kernel_block:
+    push ecx
+    push edi
+    ;xor ecx, ecx
+;.lda_retry:
     mov ah, 0x42 ; (bios) read via LDA
-    mov dl, 0x80 ; drive 0
     mov si, lda_packet
     int DISK
     jc disk_fail
+    
+    ;cmp ecx, 2
+    ;jmp disk_fail
+    ;inc ecx
+    ;jmp .lda_retry
 
-    print load ; just a helpful message
-    print disk_okay ; since we could load the strings, we know disk is fine
+.continue:
+    pop edi
+    mov ecx, 512 / 4 ; size of a sector divided by 4 bytes
+    movzx esi, word [lda_packet.buffer_address]
+    ; Move buffer from esi to edi, ecx times
+    rep movsd
 
-    ; switch to 32 bit protected mode
-    ; first setup the global descriptor table which is defined in the sector we just loaded
-    cli ; disable interrupts because when we switch we do not want the BIOS handling our interrupts
-    lgdt [gdt_descriptor] ; set addr of gdt descriptor so the cpu knows where our GDT is at
-    print gdt_okay
+    ; Prepare for next loop
+    mov eax, [lda_packet.sector_start]
+    add eax, 1
+    mov [lda_packet.sector_start], eax
+
+    pop ecx
+    sub ecx, 1
+    jnz load_kernel_block
 
     ; vesa information is required in order to develop the graphical interface
     mov di, 0x8000 ; load VESA informtion at 0x8000
@@ -266,12 +289,19 @@ unreal_mode:
     mov bx, VESA_MODE
     or bx, 0x4000 ; don't clear memory + use linear buffer
     int DISPLAY
-    no_set:
-    ; set 32 bit mode in control register
-    mov esi, cr0 ; get contents of the control register so we can modify them
-    or esi, 0x1 ; set esi's first bit (16 bit or 32 bit mode flag) to 1
-    mov cr0, esi ; flag is now set, we go from 16 bit real mode to 32 bit protected mode
-    jmp CODE_SEGMENT:start_protected ; make a far jump to flush the CPU pipeline so we don't keep executing 16 bit code
+
+    ; Finally switch to 32 bit protected mode
+    cli ; disable interrupts because when we switch we do not want the BIOS handling our interrupts
+    lgdt [gdt_descriptor] ; set addr of gdt descriptor so the cpu knows where our GDT is at
+
+    mov eax, cr0
+    or eax, 1
+    mov cr0, eax
+
+    jmp CODE_SEGMENT:start_protected ; make a far jump to flush the CPU pipeline
+.loop:
+    hlt
+    jmp .loop
 
 ; AX is 0 if the A20 line is disabled, 1 otherwise
 ; https://wiki.osdev.org/A20_Line#Testing_the_A20_line
@@ -323,7 +353,7 @@ lda_bad:
 
 vesa_fail:
     print graphics
-    jmp no_set
+    jmp hang
 
 vesa_search_mode:
     mov ax, [si] ; read a mode
@@ -351,7 +381,7 @@ start_protected:
     mov fs, ax
     mov ss, ax
 
-    call 0x8200 ; call the location the kernel was loaded to
+    call 0x100000 ; call the location the kernel was loaded to
 
     jmp $
 
@@ -373,15 +403,18 @@ align 4
 lda_packet:
     db 0x10 ; size of LDA packet, which is 16 bytes
     db 0 ; required
-    dw 127 ; sectors to transfer
-    dw 0x8200 ; transfer buffer location
+.sectors:
+    dw 1 ; sectors to transfer
+.buffer_address:
+    dw 0x1000 ; transfer buffer location
     dw 0x0 ; offset, which is 0
-    dq 2 ; start reading including 3rd sector
+.sector_start:
+    dq 16 ; start reading from the 17th sector
 
 
 ; global descriptor table
 ; it tends to be super weird and fragmented, but i'll try to comment as much as possible
-; there are 4 entries, the first 2 entries is code/data for 32 bit, the second 2 entries are for code/data in 16 bit
+; there are 2 code/data entries for 32 bit
 
 gdt:
     ; gdt null descriptor
