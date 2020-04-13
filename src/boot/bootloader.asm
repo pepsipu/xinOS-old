@@ -36,19 +36,23 @@ stage_one_start:
     ; print confirmation that we have booted
     print ok
 
-    ; read strings/data from disk to memory right above bootloader using CHS addressing
+    ; detect if LDA is available
+    mov ah, 0x41 ; (bios) ensure lda
+    mov bx, 0x55aa ; signature
+    int DISK
+    jc lda_bad ; err if carry is set
+    print disk_okay
+
+    ; read stage two of bootloader from disk to memory
     xor cx, cx
 .retry_loop:
     push cx
-    mov bx, 0x7e00 ; data/strings location
-    mov ah, 0x2 ; (bios) read a sector mode
-    mov al, 0x15 ; read 15 sectors (7.5k)
-    mov cx, 0x2 ; ch = cylinder 0, cl = sector 2
-    mov dh, 0x0 ; head 0
+    mov ah, 0x42 ; (bios) read a sector mode
+    lea si, [lda_packet]
     ; dl is set to correct drive number
     int DISK ; call bios to handle disk operation
-    pop cx
     jnc .disk_success ; if the carry flag is not set, jump to success
+    pop cx
     cmp cx, 2 ; check if this was our third try
     je disk_fail ; if it was, hand
     ; otherwise, try again
@@ -81,6 +85,10 @@ hang:
     cli ; clear interrupt flag
     hlt ; halt the cpu
     jmp hang ; if for some reason we resume (likely due to an interrupt we cannot block), jump back to the hang sequence
+
+lda_bad:
+    print no_lda
+    jmp hang
 
 disk_fail:
     print bad_disk
@@ -122,7 +130,23 @@ disk_fail:
 
 ok db "Bootloader stage one okay.", 0
 stage_two_loaded db "Stage two loaded.", 0
+no_lda db "Your PC does not support loading data from hard drives through LDA.", 0
 bad_disk db "Unable to read from disk", 0 ; message to display in the case that we could not load data from the disk
+disk_okay db "Disk operations are functional.", 0
+
+; lda packet
+align 4
+lda_packet:
+    db 0x10 ; size of LDA packet, which is 16 bytes
+    db 0 ; required
+.sectors:
+    dw 15 ; sectors to transfer
+.buffer_address:
+    dw 0x7e00 ; transfer buffer location
+    dw 0x0 ; offset, which is 0
+.sector_start:
+    dq 1 ; start reading from the 17th sector
+
 times 510-($-$$) db 0 ; pad rest of 510 bytes with 0s
 dw 0xaa55 ; bytes 511 and 512 need to be boot signature
 
@@ -237,12 +261,9 @@ unreal_mode:
     mov eax, 0x0b8000      ; note 32 bit offset
     mov word [ds:eax], bx
 
-    ; detect if LDA is available
-    mov ah, 0x41 ; (bios) ensure lda
-    mov bx, 0x55aa ; signature
-    int DISK
-    jc lda_bad ; err if carry is set
-    print disk_okay ; since lda works, we know disk is fine
+    mov word [lda_packet.sectors], 1
+    mov word [lda_packet.buffer_address], 0x1000
+    mov dword [lda_packet.sector_start], 16
 
     mov ecx, 512
     mov edi, 0x100000
@@ -360,10 +381,6 @@ a20_fail:
     print a20_not_enabled
     jmp hang
 
-lda_bad:
-    print no_lda
-    jmp hang
-
 vesa_fail:
     print graphics
     jmp hang
@@ -402,28 +419,12 @@ strings:
 load db "Loading xinOS...", 0
 a20_enabled db "A20 line enabled.", 0
 a20_not_enabled db "Your PC does not support enabling the A20 line.", 0
-disk_okay db "Disk operations are functional.", 0
-no_lda db "Your PC does not support loading data from hard drives through LDA.", 0
 gdt_okay db "Loaded the GDT.", 0
 protected_okay db "Switching from 16-bit real mode to 32-bit protected mode.", 0
 graphics db "Your video configurations are not supported.", 0
 
 ; heads db 0
 ; sectors_per_track db 0
-
-; lda packet
-align 4
-lda_packet:
-    db 0x10 ; size of LDA packet, which is 16 bytes
-    db 0 ; required
-.sectors:
-    dw 1 ; sectors to transfer
-.buffer_address:
-    dw 0x1000 ; transfer buffer location
-    dw 0x0 ; offset, which is 0
-.sector_start:
-    dq 16 ; start reading from the 17th sector
-
 
 ; global descriptor table
 ; it tends to be super weird and fragmented, but i'll try to comment as much as possible
