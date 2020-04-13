@@ -14,6 +14,8 @@
 %define DISK 0x13
 %define DISPLAY 0x10
 
+%define SIGNATURE 0x1234acef
+
 %macro print 1
     mov si, %1
     call print_si
@@ -51,13 +53,19 @@ stage_one_start:
     lea si, [lda_packet]
     ; dl is set to correct drive number
     int DISK ; call bios to handle disk operation
-    jnc .disk_success ; if the carry flag is not set, jump to success
+    jnc .check_signature ; if the carry flag is not set, check signature
     pop cx
-    cmp cx, 2 ; check if this was our third try
-    je disk_fail ; if it was, hand
+.try_again:
+    cmp cx, 3 ; check if this was our third try
+    je disk_fail ; if it was, fail
     ; otherwise, try again
     inc cx
     jmp .retry_loop
+
+.check_signature:
+    pop cx
+    cmp dword [stage_two_signature], SIGNATURE
+    jne .try_again
 
 .disk_success:
     ; Print that we have successfully loaded the second stage
@@ -151,6 +159,8 @@ times 510-($-$$) db 0 ; pad rest of 510 bytes with 0s
 dw 0xaa55 ; bytes 511 and 512 need to be boot signature
 
 ; STAGE TWO - 7.5k bytes - sector 2-16
+stage_two_signature:
+    dd SIGNATURE
 stage_two_bootloader:
     print load
     mov sp, 0x7c00
@@ -257,17 +267,50 @@ unreal_mode:
     sti ; we enable interrupts again to be able to access BIOS functions
     ; now in unreal mode
 
-    mov bx, 0x0f01         ; attrib/char of smiley
-    mov eax, 0x0b8000      ; note 32 bit offset
-    mov word [ds:eax], bx
-
+load_tar_header:
+    ; load tar header containing kernel.bin
+    xor cx, cx
+    ; prepare lda to get tar file
     mov word [lda_packet.sectors], 1
-    mov word [lda_packet.buffer_address], 0x1000
+    mov word [lda_packet.buffer_address], 0x9000
     mov dword [lda_packet.sector_start], 16
+.retry_loop:
+    push cx
+    mov ah, 0x42 ; (bios) read a sector mode
+    lea si, [lda_packet]
+    ; dl is set to correct drive number
+    int DISK ; call bios to handle disk operation
+    jnc .check_magic ; if the carry flag is not set, check signature
+    pop cx
+.try_again:
+    cmp cx, 3 ; check if this was our third try
+    je disk_fail ; if it was, fail
+    ; otherwise, try again
+    inc cx
+    jmp .retry_loop
 
-    mov ecx, 512
+.check_magic:
+    pop cx
+    cmp dword [0x9000 + 257], "usta"
+    jne .try_again
+    cmp word [0x9000 + 257 + 4], "r "
+    jne .try_again
+
+    ; 0x9000 now contains tar header
+    mov ecx, 10
+    mov esi, 0x907c
+    call get_tar_field
+
+load_kernel:
+    mov word [lda_packet.buffer_address], 0x1000
+    mov dword [lda_packet.sector_start], 17
     mov edi, 0x100000
     ;mov edi, 0x8500
+
+    ; bytes to sectors
+    mov ecx, ebx
+    add ecx, 511 ; align to 512 bytes
+    shr ecx, 9 ; divide by 512 bytes to convert to sectors
 load_kernel_block:
     push ecx
     push edi
@@ -381,9 +424,29 @@ a20_fail:
     print a20_not_enabled
     jmp hang
 
-vesa_fail:
-    print graphics
-    jmp hang
+; Input - ECX = amount of iterations, ESI = field location
+; Output - EBX = size
+get_tar_field:
+    push eax
+    push edx
+    mov eax, 1 ; count
+    xor ebx, ebx ; size
+    ; ecx = loop iterator
+    xor edx, edx
+.loop:
+    push eax
+    mov dl, byte [esi + ecx]
+    sub edx, 0x30
+    mul edx
+    add ebx, eax
+
+    pop eax
+    mul dword [tar_octal_mul]
+    dec ecx
+    jnz .loop
+    pop edx
+    pop eax
+    ret
 
 vesa_search_mode:
     mov ax, [si] ; read a mode
@@ -395,6 +458,10 @@ vesa_search_mode:
     jmp vesa_search_mode
 .found_mode:
     ret
+
+vesa_fail:
+    print graphics
+    jmp hang
 
 [bits 32]
 start_protected:
@@ -422,6 +489,8 @@ a20_not_enabled db "Your PC does not support enabling the A20 line.", 0
 gdt_okay db "Loaded the GDT.", 0
 protected_okay db "Switching from 16-bit real mode to 32-bit protected mode.", 0
 graphics db "Your video configurations are not supported.", 0
+consts:
+tar_octal_mul dd 8
 
 ; heads db 0
 ; sectors_per_track db 0
