@@ -33,3 +33,7 @@ Awesome! xinOS provides a friendly interface for drawing pixels, squares, triang
 ~~As of now, there is no official documentation for making games. Right now, you should go look at the snake game as a reference, which is heavily commented. If you'd like to see fully fledged documentation, please star this project! I don't want to make documentation no one will use, so starring lets me know people want documentation to make games.~~
 
 After some attention from the OSDev subreddit, I've decided to start working on the Wiki page for this operating system! It's currently under development, but given some time it will finish. You can find a link to the wiki [here.](https://github.com/pepsipu/xinOS/wiki)
+
+# Does it work on actual hardware?
+https://youtu.be/VK65QSgnX_A
+Of course it does! Just take a look at one of the contributors computers :D
