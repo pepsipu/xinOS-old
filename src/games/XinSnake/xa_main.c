@@ -103,7 +103,6 @@ int xs_main() {
     fruit.y = max_rand(vbe_info->height / MOVE_AMOUNT - 1); // will multiply by 32 later, but this is needed to ensure the fruit is aligned
     while (1) {
         draw_background(0);
-        draw_square_size(fruit.x * MOVE_AMOUNT, fruit.y * MOVE_AMOUNT, MOVE_AMOUNT, MOVE_AMOUNT, 0xb000);
         struct snake_node *ptr = snake.next; // tail of snake
         // move segments of snake
         while (ptr != &snake){
@@ -112,6 +111,8 @@ int xs_main() {
             draw_square_size(ptr->x, ptr->y, MOVE_AMOUNT, MOVE_AMOUNT, 0xffff);
             ptr = ptr->next;
         }
+
+        draw_square_size((fruit.x * MOVE_AMOUNT) + 8, (fruit.y * MOVE_AMOUNT) + 8, MOVE_AMOUNT - 16, MOVE_AMOUNT - 16, 0xb000);
         // move head
         switch (direction) {
             case 0:
