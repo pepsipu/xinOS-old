@@ -301,6 +301,8 @@ load_tar_header:
     mov esi, 0x907c
     call get_tar_field
 
+    mov ecx, 0
+    push ecx
 load_kernel:
     mov word [lda_packet.buffer_address], 0x1000
     mov dword [lda_packet.sector_start], 17
@@ -347,6 +349,12 @@ load_kernel_block:
     pop ecx
     sub ecx, 1
     jnz load_kernel_block
+
+    pop ecx
+    sub ecx, 1
+    push ecx
+    cmp ecx, 0
+    je load_kernel
 
     ; vesa information is required in order to develop the graphical interface
     mov di, 0x9000 ; load VESA informtion at 0x9000
