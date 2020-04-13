@@ -14,6 +14,8 @@
 %define DISK 0x13
 %define DISPLAY 0x10
 
+%define SIGNATURE 0x1234acef
+
 %macro print 1
     mov si, %1
     call print_si
@@ -36,24 +38,34 @@ stage_one_start:
     ; print confirmation that we have booted
     print ok
 
-    ; read strings/data from disk to memory right above bootloader using CHS addressing
+    ; detect if LDA is available
+    mov ah, 0x41 ; (bios) ensure lda
+    mov bx, 0x55aa ; signature
+    int DISK
+    jc lda_bad ; err if carry is set
+    print disk_okay
+
+    ; read stage two of bootloader from disk to memory
     xor cx, cx
 .retry_loop:
     push cx
-    mov bx, 0x7e00 ; data/strings location
-    mov ah, 0x2 ; (bios) read a sector mode
-    mov al, 0x15 ; read 15 sectors (7.5k)
-    mov cx, 0x2 ; ch = cylinder 0, cl = sector 2
-    mov dh, 0x0 ; head 0
+    mov ah, 0x42 ; (bios) read a sector mode
+    lea si, [lda_packet]
     ; dl is set to correct drive number
     int DISK ; call bios to handle disk operation
+    jnc .check_signature ; if the carry flag is not set, check signature
     pop cx
-    jnc .disk_success ; if the carry flag is not set, jump to success
-    cmp cx, 2 ; check if this was our third try
-    je disk_fail ; if it was, hand
+.try_again:
+    cmp cx, 3 ; check if this was our third try
+    je disk_fail ; if it was, fail
     ; otherwise, try again
     inc cx
     jmp .retry_loop
+
+.check_signature:
+    pop cx
+    cmp dword [stage_two_signature], SIGNATURE
+    jne .try_again
 
 .disk_success:
     ; Print that we have successfully loaded the second stage
@@ -81,6 +93,10 @@ hang:
     cli ; clear interrupt flag
     hlt ; halt the cpu
     jmp hang ; if for some reason we resume (likely due to an interrupt we cannot block), jump back to the hang sequence
+
+lda_bad:
+    print no_lda
+    jmp hang
 
 disk_fail:
     print bad_disk
@@ -122,11 +138,29 @@ disk_fail:
 
 ok db "Bootloader stage one okay.", 0
 stage_two_loaded db "Stage two loaded.", 0
+no_lda db "Your PC does not support loading data from hard drives through LDA.", 0
 bad_disk db "Unable to read from disk", 0 ; message to display in the case that we could not load data from the disk
+disk_okay db "Disk operations are functional.", 0
+
+; lda packet
+align 4
+lda_packet:
+    db 0x10 ; size of LDA packet, which is 16 bytes
+    db 0 ; required
+.sectors:
+    dw 15 ; sectors to transfer
+.buffer_address:
+    dw 0x7e00 ; transfer buffer location
+    dw 0x0 ; offset, which is 0
+.sector_start:
+    dq 1 ; start reading from the 17th sector
+
 times 510-($-$$) db 0 ; pad rest of 510 bytes with 0s
 dw 0xaa55 ; bytes 511 and 512 need to be boot signature
 
 ; STAGE TWO - 7.5k bytes - sector 2-16
+stage_two_signature:
+    dd SIGNATURE
 stage_two_bootloader:
     print load
     mov sp, 0x7c00
@@ -233,20 +267,52 @@ unreal_mode:
     sti ; we enable interrupts again to be able to access BIOS functions
     ; now in unreal mode
 
-    mov bx, 0x0f01         ; attrib/char of smiley
-    mov eax, 0x0b8000      ; note 32 bit offset
-    mov word [ds:eax], bx
+load_tar_header:
+    ; load tar header containing kernel.bin
+    xor cx, cx
+    ; prepare lda to get tar file
+    mov word [lda_packet.sectors], 1
+    mov word [lda_packet.buffer_address], 0x9000
+    mov dword [lda_packet.sector_start], 16
+.retry_loop:
+    push cx
+    mov ah, 0x42 ; (bios) read a sector mode
+    lea si, [lda_packet]
+    ; dl is set to correct drive number
+    int DISK ; call bios to handle disk operation
+    jnc .check_magic ; if the carry flag is not set, check signature
+    pop cx
+.try_again:
+    cmp cx, 3 ; check if this was our third try
+    je disk_fail ; if it was, fail
+    ; otherwise, try again
+    inc cx
+    jmp .retry_loop
 
-    ; detect if LDA is available
-    mov ah, 0x41 ; (bios) ensure lda
-    mov bx, 0x55aa ; signature
-    int DISK
-    jc lda_bad ; err if carry is set
-    print disk_okay ; since lda works, we know disk is fine
+.check_magic:
+    pop cx
+    cmp dword [0x9000 + 257], "usta"
+    jne .try_again
+    cmp word [0x9000 + 257 + 4], "r "
+    jne .try_again
 
-    mov ecx, 512
+    ; 0x9000 now contains tar header
+    mov ecx, 10
+    mov esi, 0x907c
+    call get_tar_field
+
+    mov ecx, 0
+    push ecx
+load_kernel:
+    mov word [lda_packet.buffer_address], 0x1000
+    mov dword [lda_packet.sector_start], 17
     mov edi, 0x100000
     ;mov edi, 0x8500
+
+    ; bytes to sectors
+    mov ecx, ebx
+    add ecx, 511 ; align to 512 bytes
+    shr ecx, 9 ; divide by 512 bytes to convert to sectors
 load_kernel_block:
     push ecx
     push edi
@@ -283,6 +349,12 @@ load_kernel_block:
     pop ecx
     sub ecx, 1
     jnz load_kernel_block
+
+    pop ecx
+    sub ecx, 1
+    push ecx
+    cmp ecx, 0
+    je load_kernel
 
     ; vesa information is required in order to develop the graphical interface
     mov di, 0x9000 ; load VESA informtion at 0x9000
@@ -360,13 +432,29 @@ a20_fail:
     print a20_not_enabled
     jmp hang
 
-lda_bad:
-    print no_lda
-    jmp hang
+; Input - ECX = amount of iterations, ESI = field location
+; Output - EBX = size
+get_tar_field:
+    push eax
+    push edx
+    mov eax, 1 ; count
+    xor ebx, ebx ; size
+    ; ecx = loop iterator
+    xor edx, edx
+.loop:
+    push eax
+    mov dl, byte [esi + ecx]
+    sub edx, 0x30
+    mul edx
+    add ebx, eax
 
-vesa_fail:
-    print graphics
-    jmp hang
+    pop eax
+    mul dword [tar_octal_mul]
+    dec ecx
+    jnz .loop
+    pop edx
+    pop eax
+    ret
 
 vesa_search_mode:
     mov ax, [si] ; read a mode
@@ -378,6 +466,10 @@ vesa_search_mode:
     jmp vesa_search_mode
 .found_mode:
     ret
+
+vesa_fail:
+    print graphics
+    jmp hang
 
 [bits 32]
 start_protected:
@@ -402,28 +494,14 @@ strings:
 load db "Loading xinOS...", 0
 a20_enabled db "A20 line enabled.", 0
 a20_not_enabled db "Your PC does not support enabling the A20 line.", 0
-disk_okay db "Disk operations are functional.", 0
-no_lda db "Your PC does not support loading data from hard drives through LDA.", 0
 gdt_okay db "Loaded the GDT.", 0
 protected_okay db "Switching from 16-bit real mode to 32-bit protected mode.", 0
 graphics db "Your video configurations are not supported.", 0
+consts:
+tar_octal_mul dd 8
 
 ; heads db 0
 ; sectors_per_track db 0
-
-; lda packet
-align 4
-lda_packet:
-    db 0x10 ; size of LDA packet, which is 16 bytes
-    db 0 ; required
-.sectors:
-    dw 1 ; sectors to transfer
-.buffer_address:
-    dw 0x1000 ; transfer buffer location
-    dw 0x0 ; offset, which is 0
-.sector_start:
-    dq 16 ; start reading from the 17th sector
-
 
 ; global descriptor table
 ; it tends to be super weird and fragmented, but i'll try to comment as much as possible
