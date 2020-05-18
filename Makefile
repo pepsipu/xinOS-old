@@ -9,7 +9,7 @@ CSOURCES=$(shell find . -type f -iname '*.c')
 COBJECTS=$(foreach x, $(basename $(CSOURCES)), $(x).o)
 ASMSOURCES=$(shell find . -type f -iname '*.asm')
 ASMOBJECTS=$(foreach x, $(basename $(ASMSOURCES)), $(x).asm.o)
-BIN=kernel
+BIN=xinOS.bin
 ISONAME=xinOS.iso
 
 OBJS=$(COBJECTS) $(ASMOBJECTS)
@@ -27,7 +27,6 @@ mkdirs:
 iso:
 	cp grub.cfg $(BUILD)/iso/boot/grub
 	cp $(BIN) $(BUILD)/iso/boot
-
 	grub-mkrescue -o $(BUILD)/$(ISONAME) $(BUILD)/iso
 
 $(BIN): $(COBJECTS) $(ASMOBJECTS) 
